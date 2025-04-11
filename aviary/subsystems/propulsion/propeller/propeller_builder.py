@@ -1,4 +1,6 @@
 from aviary.subsystems.subsystem_builder_base import SubsystemBuilderBase
+from aviary.variable_info.variable_meta_data import _MetaData
+from aviary.utils.aviary_values import AviaryValues
 from aviary.subsystems.propulsion.propeller.propeller_performance import (
     PropellerPerformance,
 )
@@ -15,9 +17,30 @@ class PropellerBuilder(SubsystemBuilderBase):
     the subsystem.
     """
 
-    def __init__(self, name='HS_propeller'):
+    def __init__(self, name='HS_propeller', options: AviaryValues = None, meta_data=_MetaData):
         """Initializes the PropellerBuilder object with a given name."""
         super().__init__(name)
+
+        if options:
+            try:
+                self._design_activity_factor = options.get_val(Aircraft.Engine.Propeller.DESIGN_ACTIVITY_FACTOR)
+            except KeyError:
+                self._design_activity_factor = meta_data[Aircraft.Engine.Propeller.DESIGN_ACTIVITY_FACTOR]["default_value"]
+
+            try:
+                self._design_diameter = options.get_val(Aircraft.Engine.Propeller.DESIGN_DIAMETER)
+            except KeyError:
+                self._design_diameter = meta_data[Aircraft.Engine.Propeller.DESIGN_DIAMETER]["default_value"]
+
+            try:
+                self._design_integrated_lift_coefficient = options.get_val(Aircraft.Engine.Propeller.DESIGN_INTEGRATED_LIFT_COEFFICIENT)
+            except KeyError:
+                self._design_integrated_lift_coefficient = meta_data[Aircraft.Engine.Propeller.DESIGN_INTEGRATED_LIFT_COEFFICIENT]["default_value"]
+        else:
+            self._design_activity_factor = meta_data[Aircraft.Engine.Propeller.DESIGN_ACTIVITY_FACTOR]["default_value"]
+            self._design_diameter = meta_data[Aircraft.Engine.Propeller.DESIGN_DIAMETER]["default_value"]
+            self._design_integrated_lift_coefficient = meta_data[Aircraft.Engine.Propeller.DESIGN_INTEGRATED_LIFT_COEFFICIENT]["default_value"]
+
 
     def build_pre_mission(self, aviary_inputs):
         """Builds an OpenMDAO system for the pre-mission computations of the subsystem."""
@@ -42,26 +65,28 @@ class PropellerBuilder(SubsystemBuilderBase):
         """
 
         # TODO bounds are rough placeholders
-        DVs = {
-            Aircraft.Engine.Propeller.ACTIVITY_FACTOR: {
+        DVs = {}
+        if self._design_activity_factor:
+            DVs[Aircraft.Engine.Propeller.ACTIVITY_FACTOR] = {
                 'units': 'unitless',
                 'lower': 100,
                 'upper': 200,
                 # 'val': 100,  # initial value
-            },
-            Aircraft.Engine.Propeller.DIAMETER: {
+            }
+        if self._design_diameter:
+            DVs[Aircraft.Engine.Propeller.DIAMETER] = {
                 'units': 'ft',
                 'lower': 0.0,
                 'upper': None,
                 # 'val': 8,  # initial value
-            },
-            Aircraft.Engine.Propeller.INTEGRATED_LIFT_COEFFICIENT: {
+            }
+        if self._design_integrated_lift_coefficient:
+            DVs[Aircraft.Engine.Propeller.INTEGRATED_LIFT_COEFFICIENT] = {
                 'units': 'unitless',
                 'lower': 0.0,
                 'upper': 0.5,
                 # 'val': 0.5,
-            },
-        }
+            }
         return DVs
 
     def get_parameters(self, aviary_inputs=None, phase_info=None):

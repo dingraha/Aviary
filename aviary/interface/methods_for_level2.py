@@ -772,6 +772,7 @@ class AviaryProblem(om.Problem):
                 for timeseries in timeseries_to_add:
                     phase.add_timeseries_output(timeseries)
 
+
         if self.analysis_scheme is AnalysisScheme.COLLOCATION:
             self.phase_objects = []
             for phase_idx, phase_name in enumerate(phases):

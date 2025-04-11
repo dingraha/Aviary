@@ -277,6 +277,9 @@ class Aircraft:
                 'aircraft:engine:propeller:compute_installation_loss'
             )
             DATA_FILE = 'aircraft:engine:propeller:data_file'
+            DESIGN_ACTIVITY_FACTOR = 'aircraft:engine:propeller:design_activity_factor'
+            DESIGN_DIAMETER = 'aircraft:engine:propeller:design_diameter'
+            DESIGN_INTEGRATED_LIFT_COEFFICIENT = 'aircraft:engine:propeller:design_integrated_lift_coefficient'
             DIAMETER = 'aircraft:engine:propeller:diameter'
             INTEGRATED_LIFT_COEFFICIENT = (
                 'aircraft:engine:propeller:integrated_lift_coefficient'

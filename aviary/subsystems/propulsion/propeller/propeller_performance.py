@@ -15,7 +15,7 @@ from aviary.utils.aviary_values import AviaryValues
 
 from aviary.variable_info.enums import OutMachType
 from aviary.variable_info.functions import add_aviary_input, add_aviary_output, add_aviary_option
-from aviary.variable_info.variables import Aircraft, Dynamic
+from aviary.variable_info.variables import Aircraft, Dynamic, Settings
 
 
 def smooth_min(x, b, alpha=100.0):
@@ -829,9 +829,13 @@ class PropellerPerformance(om.Group):
                 'comp_tip_loss_factor', np.linspace(1.0, 1.0, nn), units='unitless'
             )
         else:
+            kwargs = {k: aviary_options.get_val(k) for k in (
+                Aircraft.Engine.Propeller.NUM_BLADES,
+                Settings.VERBOSITY
+                ) if k in aviary_options}
             self.add_subsystem(
                 name='hamilton_standard',
-                subsys=HamiltonStandard(num_nodes=nn),
+                subsys=HamiltonStandard(num_nodes=nn, **kwargs),
                 promotes_inputs=[
                     Dynamic.Atmosphere.MACH,
                     "power_coefficient",

@@ -2561,6 +2561,36 @@ add_meta_data(
 )
 
 add_meta_data(
+    Aircraft.Engine.Propeller.DESIGN_ACTIVITY_FACTOR,
+    meta_data=_MetaData,
+    units='unitless',
+    types=bool,
+    default_value=True,
+    option=True,
+    desc='if true, treat the propeller activity factor as a design variable',
+)
+
+add_meta_data(
+    Aircraft.Engine.Propeller.DESIGN_DIAMETER,
+    meta_data=_MetaData,
+    units='unitless',
+    types=bool,
+    default_value=True,
+    option=True,
+    desc='if true, treat the propeller diameter as a design variable',
+)
+
+add_meta_data(
+    Aircraft.Engine.Propeller.DESIGN_INTEGRATED_LIFT_COEFFICIENT,
+    meta_data=_MetaData,
+    units='unitless',
+    types=bool,
+    default_value=True,
+    option=True,
+    desc='if true, treat the propeller integrated lift coefficient as a design variable',
+)
+
+add_meta_data(
     Aircraft.Engine.Propeller.DIAMETER,
     meta_data=_MetaData,
     historical_name={"GASP": 'INPROP.DPROP', "FLOPS": None, "LEAPS1": None},
