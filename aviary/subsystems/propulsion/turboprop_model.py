@@ -111,7 +111,7 @@ class TurbopropModel(EngineModel):
         propeller_model_pre_mission = propeller_model.build_pre_mission(self.options, **kwargs)
         if propeller_model_pre_mission is not None:
             turboprop_group.add_subsystem(
-                propeller_model_pre_mission.name,
+                propeller_model.name,
                 subsys=propeller_model_pre_mission,
                 promotes=['*'],
             )
