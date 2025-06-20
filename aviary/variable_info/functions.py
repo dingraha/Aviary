@@ -482,7 +482,7 @@ def get_units(key, meta_data=None) -> str:
     return meta_data[key]['units']
 
 
-def extract_options(aviary_inputs: AviaryValues, metadata=_MetaData) -> dict:
+def extract_options(aviary_inputs: AviaryValues, metadata=_MetaData, name_prefix=None) -> dict:
     """
     Extract a dictionary of options from the given aviary_inputs.
 
@@ -493,6 +493,7 @@ def extract_options(aviary_inputs: AviaryValues, metadata=_MetaData) -> dict:
     meta_data : dict
         (Optional) Dictionary of aircraft metadata. Uses Aviary's built-in
         metadata by default.
+    name_prefix
 
     Returns
     -------
@@ -520,12 +521,73 @@ def extract_options(aviary_inputs: AviaryValues, metadata=_MetaData) -> dict:
     return options
 
 
+def extract_engine_options(aviary_inputs: AviaryValues, metadata=_MetaData, engine_varname_prefix="aircraft:engine") -> list:
+    """
+    Extract a dictionary of engine-related options from the given aviary_inputs.
+
+    Parameters
+    ----------
+    aviary_inputs : AviaryValues
+        Instance of AviaryValues containing all initial values.
+    meta_data : dict
+        (Optional) Dictionary of aircraft metadata. Uses Aviary's built-in
+        metadata by default.
+    engine_varname_prefix : str
+        (Optional) Prefix for engine variable names. Defaults to "aircraft:engine".
+
+    Returns
+    -------
+    list
+        List of dictionary of option names and values, one list entry per engine model.
+    """
+
+    num_engine_models = len(aviary_inputs.get_val(Aircraft.Engine.NUM_ENGINES))
+
+    # Now all the multivalue=True options should have length `num_engine_models`.
+
+    options = [{} for _ in range(num_engine_models)]
+    for key, meta in metadata.items():
+        if key.startswith(engine_varname_prefix):
+            if key not in aviary_inputs:
+                continue
+
+            if not meta['option']:
+                continue
+
+            if not meta['multivalue']:
+                raise UserWarning(f"ignoring non-multivalue engine variable {key}")
+                continue
+
+            val, units = aviary_inputs.get_item(key)
+            meta_units = meta['units']
+
+            if type(val) in (list, np.ndarray, tuple):
+                # Have a collection of stuff, so make sure we have the right number.
+                if len(val) != num_engine_models:
+                    raise ValueError(f"engine variable {key} should have {len(val)} values, but is {val}")
+            else:
+                # Have a scalar, so just use that value for all of them.
+                val = num_engine_models * (val,)
+
+            for opts, v in zip(options, val):
+
+                if meta_units == 'unitless' or meta_units is None:
+                    opts[key] = v
+
+                else:
+                    # Implement as (quantity, unit)
+                    opts[key] = (v, units)
+
+    return options
+
+
 def setup_model_options(
     prob: om.Problem,
     aviary_inputs: AviaryValues,
     meta_data=_MetaData,
     engine_models=None,
     prefix='',
+    engine_varname_prefix="aircraft:engine",
 ):
     """
     Setup the correct model options for an aviary problem.
@@ -554,31 +616,42 @@ def setup_model_options(
         # No engine data.
         return
 
-    if num_engine_models > 1:
-        if engine_models is None:
-            engine_models = prob.engine_builders
+    # if num_engine_models > 1:
+    #     if engine_models is None:
+    #         engine_models = prob.engine_builders
+    #
+    #     for idx in range(num_engine_models):
+    #         eng_name = engine_models[idx].name
+    #
+    #         # TODO: For future flexibility, need to tag the required engine options.
+    #         opt_names = [
+    #             Aircraft.Engine.SCALE_PERFORMANCE,
+    #             Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
+    #             Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
+    #             Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
+    #             Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
+    #         ]
+    #         opt_names_units = [
+    #             Aircraft.Engine.REFERENCE_SLS_THRUST,
+    #             Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
+    #         ]
+    #         opts = {}
+    #         for key in opt_names:
+    #             opts[key] = aviary_inputs.get_item(key)[0][idx]
+    #         for key in opt_names_units:
+    #             val, units = aviary_inputs.get_item(key)
+    #             opts[key] = (val[idx], units)
+    #
+    #         path = f'{prefix}*core_propulsion.{eng_name}*'
+    #         prob.model_options[path] = opts
 
-        for idx in range(num_engine_models):
-            eng_name = engine_models[idx].name
+    if engine_models is None:
+        engine_models = prob.engine_builders
+    if len(engine_models) != num_engine_models:
+        raise ValueError(f'expected {num_engine_models} but have {len(engine_models)}')
 
-            # TODO: For future flexibility, need to tag the required engine options.
-            opt_names = [
-                Aircraft.Engine.SCALE_PERFORMANCE,
-                Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
-                Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
-                Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
-                Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
-            ]
-            opt_names_units = [
-                Aircraft.Engine.REFERENCE_SLS_THRUST,
-                Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
-            ]
-            opts = {}
-            for key in opt_names:
-                opts[key] = aviary_inputs.get_item(key)[0][idx]
-            for key in opt_names_units:
-                val, units = aviary_inputs.get_item(key)
-                opts[key] = (val[idx], units)
-
-            path = f'{prefix}*core_propulsion.{eng_name}*'
-            prob.model_options[path] = opts
+    engine_options = extract_engine_options(aviary_inputs, meta_data, engine_varname_prefix)
+    for opts, engine_model in zip(engine_options, engine_models):
+        eng_name = engine_model.name
+        path = f'{prefix}*core_propulsion.{eng_name}*'
+        prob.model_options[path] = opts

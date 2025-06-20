@@ -2629,7 +2629,7 @@ add_meta_data(
     units='unitless',
     desc='number of blades per propeller',
     option=True,
-    types=int,
+    types=(int, np.int64),
     multivalue=True,
     default_value=0,
 )
