@@ -102,7 +102,7 @@ class TestFLOPSBalancedFieldLength(unittest.TestCase):
         varnames = [Aircraft.Wing.ASPECT_RATIO, Aircraft.Engine.SCALE_FACTOR]
         set_aviary_input_defaults(takeoff.model, varnames, aviary_options)
 
-        setup_model_options(takeoff, aviary_options)
+        setup_model_options(takeoff, aviary_options, engine_models=engines)
 
         # suppress warnings:
         # "input variable '...' promoted using '*' was already promoted using 'aircraft:*'

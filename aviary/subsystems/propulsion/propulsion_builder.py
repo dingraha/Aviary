@@ -255,21 +255,12 @@ class CorePropulsionBuilder(PropulsionBuilderBase):
         return mass_names
 
     # NOTE no unittests!
-    def preprocess_inputs(self):
-        """Call get_mass_names() on all engine models and return combined result."""
-        mass_names = {}
-        for engine in self.engine_models:
-            engine_mass_names = engine.get_mass_names()
-            mass_names.update(engine_mass_names)
-
-        return mass_names
-
-    # NOTE no unittests!
     def get_outputs(self):
         """Call get_outputs() on all engine models and return combined result."""
         outputs = []
         for engine in self.engine_models:
             engine_outputs = engine.get_outputs()
+            # I think this should be outputs.extend(engine_outputs), so we don't end up with a list of lists.
             outputs.append(engine_outputs)
 
         return outputs
@@ -303,3 +294,23 @@ class CorePropulsionBuilder(PropulsionBuilderBase):
         for idx, engine in enumerate(self.engine_models):
             kwargs['engine_idx'] = idx
             engine.report(prob, filepath, **kwargs)
+
+    # def get_var_names(self, options_only=False):
+    #     """
+    #     Returns all propulsion-related variables associated with all engine models.
+    #
+    #     Parameters
+    #     ----------
+    #     options_only=False : bool
+    #         Only return variables that are OpenMDAO `options`.
+    #     """
+    #     engine_vars = []
+    #     for engine in self.engine_models:
+    #         engine_vars.extend(engine.get_var_names(options_only=options_only))
+    #
+    #     # Remove duplicates.
+    #     engine_vars = list(set(engine_vars))
+    #
+    #     return engine_vars
+
+

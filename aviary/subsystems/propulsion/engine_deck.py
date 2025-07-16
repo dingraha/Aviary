@@ -434,6 +434,7 @@ class EngineDeck(EngineModel):
         for key in self.data:
             self.data[key] = self._original_data[key]
 
+
     def _check_data(self):
         """
         Checks for consistency of provided thrust and drag data, ensures no required
@@ -1603,6 +1604,87 @@ class EngineDeck(EngineModel):
         self.alt_max_count = max_alt_count
         self.data_max_count = max_data_count
         self.data_indices = data_indices.astype(int)
+
+    def get_engine_options(self):
+        if self.read_from_file:
+            message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
+        else:
+            message = f'EngineDeck <{self.name}>'
+
+        d = {}
+        default = (None, None)
+
+        # First work on the engine-related options that `EngineDeck` always needs.
+        names = [
+            Aircraft.Engine.IGNORE_NEGATIVE_THRUST,
+            Aircraft.Engine.GEOPOTENTIAL_ALT,
+            Aircraft.Engine.REFERENCE_SLS_THRUST,
+            Aircraft.Engine.SCALE_PERFORMANCE,
+            # Aircraft.Engine.SCALE_FACTOR,
+            # Aircraft.Engine.SCALED_SLS_THRUST,
+            Aircraft.Engine.GENERATE_FLIGHT_IDLE,
+            Aircraft.Engine.INTERPOLATION_METHOD,
+            Aircraft.Engine.NUM_ENGINES]
+        for name in names:
+            val, units = self.get_item(name, default)
+            if val == None:
+                raise ValueError(f"{message}: No value found for option {name}")
+            else:
+                d[name] = {"val": val, "units": units}
+
+        # Include the data file name if that's being used.
+        if self.read_data_file:
+            name = Aircraft.Engine.DATA_FILE
+            val, units = self.get_item(name, default)
+            if val == None:
+                raise ValueError(f"{message}: No value found for option {name}")
+            else:
+                d[name] = {"val": val, "units": units}
+
+        # Include flight idle data if that's used.
+        if self.get_val(Aircraft.Engine.GENERATE_FLIGHT_IDLE):
+            flight_idle_names = [
+                Aircraft.Engine.FLIGHT_IDLE_THRUST_FRACTION,
+                Aircraft.Engine.FLIGHT_IDLE_MIN_FRACTION,
+                Aircraft.Engine.FLIGHT_IDLE_MAX_FRACTION]
+            for name in flight_idle_names:
+                val, units = self.get_item(name, default)
+                if val == None:
+                    raise ValueError(f"{message}: No value found for option {name}")
+                else:
+                    d[name] = {"val": val, "units": units}
+
+        # Also step through the required options the user passed when constructing this EngineDeck.
+        # But only consider the ones that are specific to an engine model.
+        for name in self.required_variables:
+            if name.startswith("aircraft:engine:") and (not (name in d)):
+                val, units = self.get_item(name, default)
+                if val == None:
+                    raise ValueError(f"{message}: No value found for option {name}")
+                else:
+                    d[name] = {"val": val, "units": units}
+
+        return d
+
+    def get_engine_inputs(self):
+        if self.read_from_file:
+            message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
+        else:
+            message = f'EngineDeck <{self.name}>'
+
+        d = {}
+        default = (None, None)
+
+        # First work on the engine-related inputs that `EngineDeck` always needs.
+        names = [
+            Aircraft.Engine.SCALE_FACTOR,
+            Aircraft.Engine.SCALED_SLS_THRUST]
+        for name in names:
+            val, units = self.get_item(name, default)
+            if val == None:
+                raise ValueError(f"{message}: No value found for input {name}")
+            else:
+                d[name] = {"val": val, "units": units}
 
 
 #####################

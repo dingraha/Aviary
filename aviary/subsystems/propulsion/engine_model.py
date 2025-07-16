@@ -252,3 +252,73 @@ class EngineModel(SubsystemBuilderBase):
             Unit of val.
         """
         self.options.set_val(key, val, units)
+
+    # def get_engine_only_inputs(self, options_only=False):
+    #     """
+    #     Returns all propulsion-related input variables.
+    #     """
+    #     # engine_vars = []
+    #     # for item in get_names_from_hierarchy(Aircraft.Engine):
+    #     #     if options_only and (not self.meta_data[item]['option']):
+    #     #         pass
+    #     #     else:
+    #     #         engine_vars.append(item)
+    #     #
+    #     # for item in get_names_from_hierarchy(Aircraft.Nacelle):
+    #     #     if options_only and (not self.meta_data[item]['option']):
+    #     #         pass
+    #     #     else:
+    #     #         engine_vars.append(item)
+    #     #
+    #     # # No need to worry about duplicates since we're getting names from the variable hierarchy.
+    #     # return engine_vars
+    #     raise NotImplementedError(
+    #         'get_var_names() is a required method but has not '
+    #         f'been implemented in EngineModel <{self.name}>'
+    #     )
+
+    def get_engine_options(self):
+        """
+        """
+        raise NotImplementedError(
+            'get_engine_options() is a required method but has not '
+            f'been implemented in EngineModel <{self.name}>'
+        )
+
+    def get_engine_inputs(self):
+        """
+        """
+        raise NotImplementedError(
+            'get_engine_inputs() is a required method but has not '
+            f'been implemented in EngineModel <{self.name}>'
+        )
+
+    # def get_engine_outputs(self):
+    #     """
+    #     """
+    #     raise NotImplementedError(
+    #         'get_engine_outputs() is a required method but has not '
+    #         f'been implemented in EngineModel <{self.name}>'
+    #     )
+    #
+    # def get_per_engine_type_options(self):
+    #     """
+    #     Return names of Aviary variables that are intended to be divided between each engine model.
+    #
+    #     Returns
+    #     -------
+    #     opt_names
+    #         List of `str` variable names
+    #     """
+    #     # DJI: copying these from `aviary.functions.setup_model_options`.
+    #     opt_names = [
+    #         Aircraft.Engine.SCALE_PERFORMANCE,
+    #         Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
+    #         Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
+    #         Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
+    #         Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
+    #         Aircraft.Engine.REFERENCE_SLS_THRUST,
+    #         Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
+    #     ]
+    #     return opt_names
+    #

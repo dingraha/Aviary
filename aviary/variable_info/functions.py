@@ -1,3 +1,4 @@
+from itertools import chain
 from enum import Enum
 
 import dymos as dm
@@ -554,31 +555,71 @@ def setup_model_options(
         # No engine data.
         return
 
-    if num_engine_models > 1:
-        if engine_models is None:
-            engine_models = prob.engine_builders
+    # if num_engine_models > 1:
+    #     if engine_models is None:
+    #         engine_models = prob.engine_builders
+    #
+    #     for idx in range(num_engine_models):
+    #         eng_name = engine_models[idx].name
+    #
+    #         # TODO: For future flexibility, need to tag the required engine options.
+    #         opt_names = [
+    #             Aircraft.Engine.SCALE_PERFORMANCE,
+    #             Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
+    #             Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
+    #             Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
+    #             Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
+    #         ]
+    #         opt_names_units = [
+    #             Aircraft.Engine.REFERENCE_SLS_THRUST,
+    #             Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
+    #         ]
+    #         opts = {}
+    #         for key in opt_names:
+    #             opts[key] = aviary_inputs.get_item(key)[0][idx]
+    #         for key in opt_names_units:
+    #             val, units = aviary_inputs.get_item(key)
+    #             opts[key] = (val[idx], units)
+    #
+    #         path = f'{prefix}*core_propulsion.{eng_name}*'
+    #         prob.model_options[path] = opts
 
-        for idx in range(num_engine_models):
-            eng_name = engine_models[idx].name
+    if engine_models is None:
+        engine_models = prob.engine_builders
 
-            # TODO: For future flexibility, need to tag the required engine options.
-            opt_names = [
-                Aircraft.Engine.SCALE_PERFORMANCE,
-                Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
-                Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
-                Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
-                Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
-            ]
-            opt_names_units = [
-                Aircraft.Engine.REFERENCE_SLS_THRUST,
-                Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
-            ]
-            opts = {}
-            for key in opt_names:
-                opts[key] = aviary_inputs.get_item(key)[0][idx]
-            for key in opt_names_units:
-                val, units = aviary_inputs.get_item(key)
-                opts[key] = (val[idx], units)
+    # Get a unique list of all per-engine type options for all engine models.
+    per_engine_varnames = set(chain(*[em.get_per_engine_type_options() for em in engine_models]))
 
-            path = f'{prefix}*core_propulsion.{eng_name}*'
-            prob.model_options[path] = opts
+    # This will be a list of options for each engine.
+    engine_opts = [{} for _ in range(num_engine_models)]
+    for key in per_engine_varnames:
+        # Get the values for the current variable.
+        vals, units = aviary_inputs.get_item(key)
+        if vals is None:
+            raise ValueError(f"no value found for variable {key}")
+
+        # Loop over each engine model
+        idx = 0
+        for (opts, engine_model) in zip(engine_opts, engine_models):
+            # Check if this variable is associated with this engine model.
+            if key in engine_model.get_per_engine_type_options():
+                # It is, so grab the next one and assign it to this engine's options.
+                try:
+                    val = vals[idx]
+                    idx += 1
+                except IndexError:
+                    raise ValueError(f"expected at least {idx+1} values for variable {key}, but have {vals}")
+                if units == 'unitless':
+                    opts[key] = val
+                else:
+                    opts[key] = (val, units)
+
+        if idx < len(vals):
+            # Warn the user if we didn't use all of vals.
+            raise UserWarning(f'extra values found for {key} = {vals} (expected {idx+1} values)')
+
+    # Push down each engine's options to the correct models.
+    for engine_model, opts in zip(engine_models, engine_opts):
+        print(f"{engine_model.name}: {opts}")
+        path = f'{prefix}*core_propulsion.{engine_model.name}*'
+        prob.model_options[path] = opts

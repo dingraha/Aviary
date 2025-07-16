@@ -194,6 +194,31 @@ class TurbopropModel(EngineModel):
             desvars.update(self.propeller_model.get_design_vars())
         return desvars
 
+    def get_engine_options(self):
+        d = {}
+        if self.shaft_power_model is not None:
+            d.update(self.shaft_power_model.get_engine_options())
+        if self.gearbox_model is not None:
+            d.update(self.gearbox_model.get_engine_options())
+        if self.propeller_model is not None:
+            d.update(self.propeller_model.get_engine_options())
+
+        return d
+
+    def get_engine_inputs(self):
+        d = {}
+        if self.shaft_power_model is not None:
+            d.update(self.shaft_power_model.get_engine_inputs())
+        if self.gearbox_model is not None:
+            d.update(self.gearbox_model.get_engine_inputs())
+        if self.propeller_model is not None:
+            d.update(self.propeller_model.get_engine_inputs())
+
+        return d
+
+
+
+
 
 class TurbopropMission(om.Group):
     def initialize(self):
