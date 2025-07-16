@@ -555,9 +555,12 @@ def setup_model_options(
         # No engine data.
         return
 
+    # TODO: Modify this method for multi mission/model.
+    aviary_group = prob.model
+
     # if num_engine_models > 1:
     #     if engine_models is None:
-    #         engine_models = prob.engine_builders
+    #         engine_models = aviary_group.engine_builders
     #
     #     for idx in range(num_engine_models):
     #         eng_name = engine_models[idx].name
@@ -585,7 +588,7 @@ def setup_model_options(
     #         prob.model_options[path] = opts
 
     if engine_models is None:
-        engine_models = prob.engine_builders
+        engine_models = aviary_group.engine_builders
 
     # Get a unique list of all per-engine type options for all engine models.
     per_engine_varnames = set(chain(*[em.get_per_engine_type_options() for em in engine_models]))
