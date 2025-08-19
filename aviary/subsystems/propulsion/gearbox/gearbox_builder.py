@@ -116,3 +116,26 @@ class GearboxBuilder(SubsystemBuilderBase):
         else:
             constraints = {}
         return constraints
+
+    def get_engine_inputs(self):
+        message = f'Gearbox <{self.name}>'
+        d = {}
+
+        # Use this engine model's metadata for default values and units.
+        meta_data = self.meta_data
+
+        names = [
+                Aircraft.Engine.RPM_DESIGN,
+                Aircraft.Engine.Gearbox.EFFICIENCY,
+                Aircraft.Engine.Gearbox.GEAR_RATIO,
+                Aircraft.Engine.Gearbox.SHAFT_POWER_DESIGN,
+                Aircraft.Engine.Gearbox.SPECIFIC_TORQUE,
+        ]
+        for name in names:
+            default = (meta_data[name]["default_value"], meta_data[name]["units"])
+            val, units = self.get_item(name, default)
+            d[name] = {"val": val, "units": units}
+
+        return d
+
+

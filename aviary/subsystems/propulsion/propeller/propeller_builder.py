@@ -1,7 +1,9 @@
-from aviary.subsystems.propulsion.propeller.propeller_performance import PropellerPerformance
+from aviary.subsystems.propulsion.propeller.propeller_performance import PropellerPerformance, _needs_map_and_data_file
 from aviary.subsystems.subsystem_builder_base import SubsystemBuilderBase
 from aviary.utils.named_values import NamedValues
 from aviary.variable_info.variables import Aircraft, Dynamic, Mission
+
+
 
 
 class PropellerBuilder(SubsystemBuilderBase):
@@ -116,9 +118,6 @@ class PropellerBuilder(SubsystemBuilderBase):
 
         return parameters
 
-    def get_mass_names(self):
-        return [Aircraft.Engine.Gearbox.MASS]
-
     def get_outputs(self):
         return [
             Dynamic.Vehicle.Propulsion.SHAFT_POWER + '_out',
@@ -127,3 +126,58 @@ class PropellerBuilder(SubsystemBuilderBase):
             Dynamic.Vehicle.Propulsion.TORQUE + '_out',
             Mission.Constraints.GEARBOX_SHAFT_POWER_RESIDUAL,
         ]
+
+    def get_engine_options(self):
+        message = f'Propeller <{self.name}>'
+
+        names = [
+                Aircraft.Engine.Propeller.COMPUTE_INSTALLATION_LOSS
+        ]
+
+        use_propeller_map, prop_file_path = _needs_map_and_data_file(self.data, aviary_inputs)
+        if use_propeller_map:
+            names.append(Aircraft.Engine.Propeller.DATA_FILE)
+        else:
+            names.append(Aircraft.Engine.Propeller.NUM_BLADES)
+            
+        d = {}
+        default = (None, None)
+        for name in names:
+            val, units = self.get_item(name, default)
+            if val == None:
+                raise ValueError(f"{message}: No value found for option {name}")
+            else:
+                d[name] = {"val": val, "units": units}
+
+        return d
+
+
+    def get_engine_inputs(self):
+        message = f'Propeller <{self.name}>'
+
+        names = [
+                Aircraft.Engine.Propeller.DIAMETER,
+                Aircraft.Engine.Propeller.TIP_MACH_MAX,
+                Aircraft.Engine.Propeller.TIP_SPEED_MAX,
+        ]
+
+        use_propeller_map, prop_file_path = _needs_map_and_data_file(self.data, aviary_inputs)
+        if not use_propeller_map:
+            names.append(Aircraft.Engine.Propeller.ACTIVITY_FACTOR)
+            names.append(Aircraft.Engine.Propeller.INTEGRATED_LIFT_COEFFICIENT)
+
+        if self.get_val(Aircraft.Engine.Propeller.COMPUTE_INSTALLATION_LOSS):
+            names.append(Aircraft.Nacelle.AVG_DIAMETER)
+            
+        d = {}
+        default = (None, None)
+        for name in names:
+            val, units = self.get_item(name, default)
+            if val == None:
+                raise ValueError(f"{message}: No value found for input {name}")
+            else:
+                d[name] = {"val": val, "units": units}
+
+        return d
+
+

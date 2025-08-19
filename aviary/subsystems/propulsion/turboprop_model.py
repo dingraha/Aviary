@@ -214,10 +214,13 @@ class TurbopropModel(EngineModel):
         if self.propeller_model is not None:
             d.update(self.propeller_model.get_engine_inputs())
 
+        # Check if FIXED_RPM is present, and if so include that in the inputs.
+        default = (None, None)
+        val, units = self.get_item(Aircraft.Engine.FIXED_RPM, default)
+        if not (val == None):
+            d[Aircraft.Engine.FIXED_RPM] = {"val": val, "units": units}
+
         return d
-
-
-
 
 
 class TurbopropMission(om.Group):

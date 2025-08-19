@@ -140,6 +140,56 @@ class CoreGeometryBuilder(GeometryBuilderBase):
 
         return params
 
+    def get_engine_options(self):
+        if code_origin is GASP:
+            message = f'GASP-based Geometry <{self.name}>'
+            names = [Aircraft.Engine.NUM_ENGINES]
+
+        elif code_origin is FLOPS:
+            message = f'FLOPS-based Geometry <{self.name}>'
+            names = [Aircraft.Engine.NUM_ENGINES]
+        else:
+            raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
+
+        # d = {}
+        # default = (None, None)
+        # for name in names:
+        #     val, units = self.get_item(name, default)
+        #     if val == None:
+        #         raise ValueError(f"{message}: No value found for option {name}")
+        #     else:
+        #         d[name] = {"val": val, "units": units}
+        d = {name: {} for name in names}
+
+        return d
+
+    def get_engine_inputs(self):
+        if code_origin is GASP:
+            message = f'GASP-based Geometry <{self.name}>'
+            names = [Aircraft.Engine.REFERENCE_DIAMETER, Aircraft.Engine.SCALE_FACTOR]
+            has_hybrid_system, _ = aviary_inputs.get_item(Aircraft.Electrical.HAS_HYBRID_SYSTEM, defaults=(False, None))
+            if has_hybrid_system:
+                names.append(Aircraft.Engine.WING_LOCATIONS)
+
+        elif code_origin is FLOPS:
+            message = f'FLOPS-based Geometry <{self.name}>'
+            names = []
+        else:
+            raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
+
+        # d = {}
+        # default = (None, None)
+        # for name in names:
+        #     val, units = self.get_item(name, default)
+        #     if val == None:
+        #         raise ValueError(f"{message}: No value found for input {name}")
+        #     else:
+        #         d[name] = {"val": val, "units": units}
+        #     d[name] = {}
+        d = {name: {} for name in names}
+
+        return d
+
     def report(self, prob, reports_folder, **kwargs):
         """
         Generate the report for Aviary core geometry analysis.

@@ -17,6 +17,25 @@ from aviary.variable_info.functions import add_aviary_input, add_aviary_option, 
 from aviary.variable_info.variables import Aircraft, Dynamic
 
 
+def _needs_map_and_data_file(data, aviary_options):
+    if data is None:
+        try:
+            prop_file_path = aviary_options.get_val(Aircraft.Engine.Propeller.DATA_FILE)
+        except KeyError:
+            use_propeller_map = False
+            prop_file_path = None
+        else:
+            use_propeller_map = True
+            # This shouldn't ever happen: should be "un-vectorized" engine inputs/options in `aviary_options` thanks to `EngineModel._preprocess_inputs`.
+            if isinstance(prop_file_path, (list, np.ndarray)):
+                prop_file_path = prop_file_path[0]
+    else:
+        use_propeller_map = True
+        prop_file_path = None
+
+    return use_propeller_map, prop_file_path
+
+
 class TipSpeed(om.ExplicitComponent):
     """
     Compute current propeller speed and allowable max tip speed
@@ -419,17 +438,7 @@ class PropellerPerformance(om.Group):
         if isinstance(compute_installation_loss, (list, np.ndarray)):
             compute_installation_loss = compute_installation_loss[0]
 
-        if data is None:
-            try:
-                prop_file_path = aviary_options.get_val(Aircraft.Engine.Propeller.DATA_FILE)
-            except KeyError:
-                use_propeller_map = False
-            else:
-                use_propeller_map = True
-                if isinstance(prop_file_path, (list, np.ndarray)):
-                    prop_file_path = prop_file_path[0]
-        else:
-            use_propeller_map = True
+        use_propeller_map, prop_file_path = _needs_map_and_data_file(data, aviary_options)
 
         # compute the propeller tip speed based on the input RPM and diameter of the propeller
         # NOTE allows for violation of tip speed limits

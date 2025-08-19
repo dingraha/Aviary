@@ -1617,7 +1617,6 @@ class EngineDeck(EngineModel):
             message = f'EngineDeck <{self.name}>'
 
         d = {}
-        default = (None, None)
 
         # First work on the engine-related options that `EngineDeck` always needs.
         names = [
@@ -1625,12 +1624,20 @@ class EngineDeck(EngineModel):
             Aircraft.Engine.GEOPOTENTIAL_ALT,
             Aircraft.Engine.REFERENCE_SLS_THRUST,
             Aircraft.Engine.SCALE_PERFORMANCE,
-            # Aircraft.Engine.SCALE_FACTOR,
-            # Aircraft.Engine.SCALED_SLS_THRUST,
             Aircraft.Engine.GENERATE_FLIGHT_IDLE,
             Aircraft.Engine.INTERPOLATION_METHOD,
+            Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
+            Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
+            Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
+            Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
+            Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
             Aircraft.Engine.NUM_ENGINES]
+
+        # Use this engine model's metadata for default values and units.
+        meta_data = self.meta_data
+
         for name in names:
+            default = (meta_data[name]["default_value"], meta_data[name]["units"])
             val, units = self.get_item(name, default)
             if val == None:
                 raise ValueError(f"{message}: No value found for option {name}")
@@ -1640,11 +1647,9 @@ class EngineDeck(EngineModel):
         # Include the data file name if that's being used.
         if self.read_data_file:
             name = Aircraft.Engine.DATA_FILE
+            default = (meta_data[name]["default_value"], meta_data[name]["units"])
             val, units = self.get_item(name, default)
-            if val == None:
-                raise ValueError(f"{message}: No value found for option {name}")
-            else:
-                d[name] = {"val": val, "units": units}
+            d[name] = {"val": val, "units": units}
 
         # Include flight idle data if that's used.
         if self.get_val(Aircraft.Engine.GENERATE_FLIGHT_IDLE):
@@ -1653,21 +1658,17 @@ class EngineDeck(EngineModel):
                 Aircraft.Engine.FLIGHT_IDLE_MIN_FRACTION,
                 Aircraft.Engine.FLIGHT_IDLE_MAX_FRACTION]
             for name in flight_idle_names:
+                default = (meta_data[name]["default_value"], meta_data[name]["units"])
                 val, units = self.get_item(name, default)
-                if val == None:
-                    raise ValueError(f"{message}: No value found for option {name}")
-                else:
-                    d[name] = {"val": val, "units": units}
+                d[name] = {"val": val, "units": units}
 
         # Also step through the required options the user passed when constructing this EngineDeck.
         # But only consider the ones that are specific to an engine model.
         for name in self.required_variables:
             if name.startswith("aircraft:engine:") and (not (name in d)):
+                default = (meta_data[name]["default_value"], meta_data[name]["units"])
                 val, units = self.get_item(name, default)
-                if val == None:
-                    raise ValueError(f"{message}: No value found for option {name}")
-                else:
-                    d[name] = {"val": val, "units": units}
+                d[name] = {"val": val, "units": units}
 
         return d
 
@@ -1678,18 +1679,20 @@ class EngineDeck(EngineModel):
             message = f'EngineDeck <{self.name}>'
 
         d = {}
-        default = (None, None)
+
+        # Use this engine model's metadata for default values and units.
+        meta_data = self.meta_data
 
         # First work on the engine-related inputs that `EngineDeck` always needs.
         names = [
             Aircraft.Engine.SCALE_FACTOR,
             Aircraft.Engine.SCALED_SLS_THRUST]
         for name in names:
+            default = (meta_data[name]["default_value"], meta_data[name]["units"])
             val, units = self.get_item(name, default)
-            if val == None:
-                raise ValueError(f"{message}: No value found for input {name}")
-            else:
-                d[name] = {"val": val, "units": units}
+            d[name] = {"val": val, "units": units}
+
+        return d
 
 
 #####################

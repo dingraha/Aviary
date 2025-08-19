@@ -379,19 +379,11 @@ class AviaryGroup(om.Group):
                     else:
                         guesses['time'] = ((None, time_duration), units)
 
+        external_subsystems = []
         for phase_name in self.phase_info:
             for external_subsystem in self.phase_info[phase_name]['external_subsystems']:
+                external_subsystems.append(external_subsystem)
                 aviary_inputs = external_subsystem.preprocess_inputs(aviary_inputs)
-
-        # PREPROCESSORS #
-        # BUG we can't provide updated metadata to preprocessors, because we need the
-        #     processed options to build our subsystems to begin with
-        preprocess_options(
-            aviary_inputs,
-            engine_models=self.engine_builders,
-            verbosity=verbosity,
-            # metadata=self.meta_data
-        )
 
         ## Set Up Core Subsystems ##
         prop = CorePropulsionBuilder('core_propulsion', engine_models=self.engine_builders)
@@ -441,6 +433,18 @@ class AviaryGroup(om.Group):
             'mass': mass,
             'aerodynamics': aero,
         }
+
+        # PREPROCESSORS #
+        # BUG we can't provide updated metadata to preprocessors, because we need the
+        #     processed options to build our subsystems to begin with
+        all_subsystems = [prop, geom, mass, aero] + external_subsystems
+        preprocess_options(
+            aviary_inputs,
+            engine_models=self.engine_builders,
+            all_subsystems=all_subsystems,
+            verbosity=verbosity,
+            # metadata=self.meta_data
+        )
 
         # TODO optionally accept which subsystems to load from phase_info
         default_mission_subsystems = [

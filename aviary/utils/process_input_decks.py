@@ -179,6 +179,8 @@ def parse_inputs(
                 data_units = data_list.pop()
 
             var_value = convert_strings_to_data(data_list)
+            if var_name == "aircraft:engine:wing_locations":
+                print(f"var_name = {var_name}, var_value = {var_value}")
             # If var_value is length 1 list and is not supposed to be a list, pull out
             # individual value. Otherwise, convert list to numpy array
             if len(var_value) <= 1:

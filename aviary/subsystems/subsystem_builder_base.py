@@ -392,6 +392,13 @@ class SubsystemBuilderBase(ABC):
         """
         return None
 
+
+    def get_engine_options(self):
+        return {}
+
+    def get_engine_inputs(self):
+        return {}
+
     def report(self, prob, reports_folder, **kwargs):
         """
         Generates report file for this subsystem. If this subsystem doesn't need a

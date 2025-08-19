@@ -18,7 +18,7 @@ from aviary.variable_info.variables import Aircraft, Mission, Settings
 
 
 # TODO document what kwargs are used, and by which preprocessors in docstring?
-def preprocess_options(aviary_options: AviaryValues, meta_data=_MetaData, verbosity=None, **kwargs):
+def preprocess_options(aviary_options: AviaryValues, all_subsystems, meta_data=_MetaData, verbosity=None, **kwargs):
     """
     Run all preprocessors on provided AviaryValues object.
 
@@ -26,6 +26,9 @@ def preprocess_options(aviary_options: AviaryValues, meta_data=_MetaData, verbos
     ----------
     aviary_options : AviaryValues
         Options to be updated
+
+    all_subsystems : list of subsystems
+        subsystems used to determine engine-related variables needed
 
     meta_data : dict
         Variable metadata being used with this set of aviary_options
@@ -44,7 +47,7 @@ def preprocess_options(aviary_options: AviaryValues, meta_data=_MetaData, verbos
 
     preprocess_crewpayload(aviary_options, meta_data, verbosity)
     if not engine_models is None:
-        preprocess_propulsion(aviary_options, engine_models, meta_data, verbosity)
+        preprocess_propulsion(aviary_options, all_subsystems, engine_models, meta_data, verbosity)
 
 
 def remove_preprocessed_options(aviary_options):
@@ -489,6 +492,7 @@ def preprocess_crewpayload(aviary_options: AviaryValues, meta_data=_MetaData, ve
 
 def preprocess_propulsion(
     aviary_options: AviaryValues,
+    all_subsystems: list,
     engine_models: list = None,
     meta_data=_MetaData,
     verbosity=None,
@@ -510,6 +514,9 @@ def preprocess_propulsion(
     aviary_options : AviaryValues
         Options to be updated. EngineModels (provided or generated) are added, and
         Aircraft:Engine:* and Aircraft:Nacelle:* variables are vectorized as numpy arrays
+
+    all_subsystems : <list of subsystems>
+        Subsystems used to determine engine-related variables needed
 
     engine_models : <list of EngineModels> (optional)
         EngineModel objects to be added to aviary_options. Replaced existing EngineModels
@@ -533,18 +540,22 @@ def preprocess_propulsion(
     # be changed later on (otherwise preprocess_propulsion must be run again)
     num_engine_type = len(engine_models)
 
-    complete_options_list = AviaryValues(aviary_options)
+    # complete_options_list = AviaryValues(aviary_options)
+    # for engine in engine_models:
+    #     # complete_options_list.update(engine.options)
+    #     d = {k: (v["val"], v["units"]) for k, v in engine.get_engine_options().items()}
+    #     complete_options_list.update(**d)
+    #     d = {k: (v["val"], v["units"]) for k, v in engine.get_engine_inputs().items()}
+    #     complete_options_list.update(**d)
+
+    update_options_list = list(get_keys(aviary_options))
     for engine in engine_models:
-        complete_options_list.update(engine.options)
+        update_options_list.extend(list(engine.get_engine_options().keys()))
+    for subsys in all_subsystems:
+        update_options_list.extend(list(subsys.get_engine_options().keys()))
 
-    # update_list has keys of all variables that are already defined, and must
-    # be vectorized
-    update_list = list(get_keys(complete_options_list))
-
-    # Vectorize engine variables. Only update variables in update_list that are relevant
-    # to engines (defined by _get_engine_variables())
-    for var in _get_engine_variables():
-        if var in update_list:
+    for var in update_options_list:
+        if (var.startswith('aircraft:engine:') or var.startswith('aircraft.nacelle:')) and meta_data[var]['option']:
             dtype = meta_data[var]['types']
             default_value = meta_data[var]['default_value']
             multivalue = meta_data[var]['multivalue']
@@ -581,6 +592,71 @@ def preprocess_propulsion(
             # 2. aviary_options
             # 3. default value from metadata
             for i, engine in enumerate(engine_models):
+                eng_name = engine.name
+                # test to see if engine has this variable - if so, use it
+                try:
+                    # variables in engine models are trusted to be "safe", and only
+                    # contain data for that engine
+                    engine_val = engine.get_val(var, units)
+                # if the variable is not in the engine model, try the other subsystems:
+                except KeyError:
+                    for subsys in all_subsystems:
+
+
+    # # Add in the engine variables associated with all the subsystems.
+    # for subsys in all_subsystems:
+    #     d = {k: (meta_data[k]["default_value"], meta_data[k]["units"]) for k in subsys.get_engine_options.keys()}
+    #     complete_options_list.update(**d)
+    #     d = {k: (meta_data[k]["default_value"], meta_data[k]["units"]) for k in subsys.get_engine_inputs.keys()}
+    #     complete_options_list.update(**d)
+
+    # # update_list has keys of all variables that are already defined, and must
+    # # be vectorized
+    # update_list = list(get_keys(complete_options_list))
+
+    # # Vectorize engine variables. Only update variables in update_list that are relevant
+    # # to engines (defined by _get_engine_variables())
+    # for var in _get_engine_variables():
+    #     if var in update_list:
+    for var in update_list:
+        if var.startswith('aircraft:engine:') or var.startswith('aircraft.nacelle:'):
+            dtype = meta_data[var]['types']
+            default_value = meta_data[var]['default_value']
+            multivalue = meta_data[var]['multivalue']
+            units = meta_data[var]['units']
+
+            # If dtype has multiple options, prefer type of default value
+            # Otherwise, use the first type in the tuple
+            if isinstance(dtype, tuple):
+                if default_value is not None:
+                    dtype = type(default_value)
+                else:
+                    dtype = dtype[0]
+
+            if isiterable(meta_data[var]['types']):
+                typeset = meta_data[var]['types']
+            else:
+                typeset = (meta_data[var]['types'],)
+
+            # Variables are multidimensional if their base types have iterables, and are
+            # flagged as `multivalue`
+            multidimensional = set(typeset) & set((list, tuple, np.ndarray)) and multivalue
+
+            # vec is where the vectorized engine data is stored - always a list right
+            # now, converted to other types like np array later
+            vec = []
+
+            # Vectorize variable "var" from available sources #
+
+            # If var is supposed to be a unique array per engine model, assemble flat
+            # vector manually to avoid ragged arrays (such as for wing engine locations)
+
+            # Priority order is (checked per engine):
+            # 1. EngineModel.options
+            # 2. aviary_options
+            # 3. default value from metadata
+            for i, engine in enumerate(engine_models):
+                eng_name = engine.name
                 # test to see if engine has this variable - if so, use it
                 try:
                     # variables in engine models are trusted to be "safe", and only
@@ -607,9 +683,30 @@ def preprocess_propulsion(
                             vec.append(aviary_val)
                 else:
                     # save value from EngineModel
-                    if isiterable(engine_val) and multidimensional:
-                        vec.extend(engine_val)
+                    # if isiterable(engine_val) and multidimensional:
+                    #     vec.extend(engine_val)
+                    # else:
+                    #     vec.append(engine_val)
+                    if isiterable(engine_val):
+                        if multidimensional:
+                            vec.extend(engine_val)
+                        else:
+                            # `engine_val` is iterable, but we didn't expect it to be according to the metadata.
+                            # So just take the first value.
+                            if len(engine_val) > 1:
+                                warnings.warn(
+                                    f'variable {var} found in engine model <{eng_name}> is iterable, '
+                                    'but a scalar value was expected. Taking the first value only.'
+                                )
+                            vec.append(engine_val[0])
                     else:
+                        if multidimensional:
+                            # `engine_val` is not iterable, but we expected it to be according to the metadata.
+                            # So we'll just append it to `vec`, which is equivalent to treating it as a length-1 iterable.
+                            warnings.warn(
+                                f'variable {var} found in engine model <{eng_name}> is scalar, '
+                                'but an iterable value was expected. Using the (single) value anyway.'
+                            )
                         vec.append(engine_val)
                 # TODO update each engine's options with "new" values? Allows each engine
                 #      to have a copy of all options/inputs, beyond what it was

@@ -660,6 +660,36 @@ class CoreAerodynamicsBuilder(AerodynamicsBuilderBase):
         else:
             return {}
 
+    def get_engine_options(self):
+        if code_origin is GASP:
+            message = f'GASP-based Mass <{self.name}>'
+            names = []
+
+        elif code_origin is FLOPS:
+            message = f'FLOPS-based Mass <{self.name}>'
+            # try:
+            #     method = kwargs.pop('method')
+            # except KeyError:
+            #     method = None
+            names = [Aircraft.Engine.NUM_ENGINES]
+        else:
+            raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
+
+        # d = {}
+        # for name in names:
+        #     default = (None, None)
+        #     val, units = self.get_item(name, default)
+        #     if val == None:
+        #         raise ValueError(f"{message}: No value found for option {name}")
+        #     else:
+        #         d[name] = {"val": val, "units": units}
+        #     meta = self.metadata[name]
+        #     d[name] = {"val": meta["default_value"], "units": meta["units"]}
+        d = {name: {} for name in names}
+
+        return d
+
+
     def report(self, prob, reports_folder, **kwargs):
         """
         Generate the report for Aviary core aerodynamics analysis.

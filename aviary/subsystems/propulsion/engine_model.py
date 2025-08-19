@@ -189,6 +189,23 @@ class EngineModel(SubsystemBuilderBase):
                         val = val[0]
                     # update options with single value (instead of vector)
                     options.set_val(key, val, units)
+
+                else:
+                    # val is not an iterable...
+                    if isinstance(
+                        self.meta_data[key]['default_value'], (list, np.ndarray, tuple)
+                    ):
+                        # But the default value in the metadata **is** an iterable.
+                        # So warn the user, and take the default value.
+                        warnings.warn(
+                            f'Scalar {type(val)} was given for variable '
+                            f'{key} in EngineModel <{self.name}>, but '
+                            f'{type(self.meta_data[key]["default_value"])} '
+                            f'was expected. The default value '
+                            f'{self.meta_data[key]["default_value"]} will be used.'
+                        )
+                        options.set_val(key, self.meta_data[key]['default_value'], self.meta_data[key]['units'])
+
             # Currently assuming that EngineModels might care about non-engine variables,
             # so they are being kept in self.options
             # else:
@@ -277,7 +294,7 @@ class EngineModel(SubsystemBuilderBase):
     #         f'been implemented in EngineModel <{self.name}>'
     #     )
 
-    def get_engine_options(self):
+    def get_engine_options(self, aviary_inputs):
         """
         """
         raise NotImplementedError(
@@ -285,40 +302,10 @@ class EngineModel(SubsystemBuilderBase):
             f'been implemented in EngineModel <{self.name}>'
         )
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs):
         """
         """
         raise NotImplementedError(
             'get_engine_inputs() is a required method but has not '
             f'been implemented in EngineModel <{self.name}>'
         )
-
-    # def get_engine_outputs(self):
-    #     """
-    #     """
-    #     raise NotImplementedError(
-    #         'get_engine_outputs() is a required method but has not '
-    #         f'been implemented in EngineModel <{self.name}>'
-    #     )
-    #
-    # def get_per_engine_type_options(self):
-    #     """
-    #     Return names of Aviary variables that are intended to be divided between each engine model.
-    #
-    #     Returns
-    #     -------
-    #     opt_names
-    #         List of `str` variable names
-    #     """
-    #     # DJI: copying these from `aviary.functions.setup_model_options`.
-    #     opt_names = [
-    #         Aircraft.Engine.SCALE_PERFORMANCE,
-    #         Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
-    #         Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
-    #         Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
-    #         Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
-    #         Aircraft.Engine.REFERENCE_SLS_THRUST,
-    #         Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
-    #     ]
-    #     return opt_names
-    #

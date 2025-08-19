@@ -143,3 +143,67 @@ class CoreMassBuilder(MassBuilderBase):
             method = self.code_origin.value + '-derived relations'
             f.write(f'# Mass estimation: {method}')
             write_markdown_variable_table(f, prob, outputs, self.meta_data)
+
+    def get_engine_options(self):
+        if code_origin is GASP:
+            message = f'GASP-based Mass <{self.name}>'
+            names = [Aircraft.Engine.NUM_ENGINES,
+                    Aircraft.Engine.Type,
+                    Aircraft.Engine.NUM_FUSELAGE_ENGINES,
+                    Aircraft.Engine.ADDITIONAL_MASS_FRACTION]
+
+        elif code_origin is FLOPS:
+            message = f'FLOPS-based Mass <{self.name}>'
+            names = [
+                Aircraft.Engine.ADDITIONAL_MASS_FRACTION,
+                Aircraft.Engine.NUM_ENGINES,
+                Aircraft.Engine.NUM_WING_ENGINES,
+                Aircraft.Engine.REFERENCE_MASS,
+                Aircraft.Engine.REFERENCE_SLS_THRUST,
+                Aircraft.Engine.SCALE_MASS]
+        else:
+            raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
+
+        # d = {}
+        # default = (None, None)
+        # for name in names:
+        #     val, units = self.get_item(name, default)
+        #     if val == None:
+        #         raise ValueError(f"{message}: No value found for option {name}")
+        #     else:
+        #         d[name] = {"val": val, "units": units}
+        d = {name: {} for name in names}
+
+        return d
+
+    def get_engine_inputs(self):
+        if code_origin is GASP:
+            message = f'GASP-based Mass <{self.name}>'
+            names = [Aircraft.Engine.SCALED_SLS_THRUST,
+                    Aircraft.Engine.MASS_SPECIFIC,
+                    Aircraft.Engine.PYLON_FACTOR,
+                    Aircraft.Engine.MASS_SCALER,
+                    Aircraft.Engine.WING_LOCATIONS,
+                    Aircraft.Engine.POD_MASS_SCALER,
+                    Aircraft.Engine.POSITION_FACTOR]
+
+        elif code_origin is FLOPS:
+            message = f'FLOPS-based Mass <{self.name}>'
+            names = [Aircraft.Engine.SCALED_SLS_THRUST,
+                    Aircraft.Engine.MASS_SCALER,
+                    Aircraft.Engine.THRUST_REVERSERS_MASS,
+                    Aircraft.Engine.WING_LOCATIONS]
+        else:
+            raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
+
+        # d = {}
+        # default = (None, None)
+        # for name in names:
+        #     val, units = self.get_item(name, default)
+        #     if val == None:
+        #         raise ValueError(f"{message}: No value found for input {name}")
+        #     else:
+        #         d[name] = {"val": val, "units": units}
+        d = {name: {} for name in names}
+
+        return d
