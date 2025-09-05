@@ -127,7 +127,33 @@ class PropellerBuilder(SubsystemBuilderBase):
             Mission.Constraints.GEARBOX_SHAFT_POWER_RESIDUAL,
         ]
 
-    def get_engine_options(self):
+    # def get_var_shape(self, key, aviary_inputs):
+    #     use_propeller_map, prop_file_path = _needs_map_and_data_file(self.data, aviary_inputs)
+    #     option_names = []
+    #     if use_propeller_map:
+    #         option_names.append(Aircraft.Engine.Propeller.DATA_FILE)
+    #     else:
+    #         option_names.append(Aircraft.Engine.Propeller.NUM_BLADES)
+
+    #     input_names = [
+    #             Aircraft.Engine.Propeller.DIAMETER,
+    #             Aircraft.Engine.Propeller.TIP_MACH_MAX,
+    #             Aircraft.Engine.Propeller.TIP_SPEED_MAX,
+    #     ]
+
+    #     if not use_propeller_map:
+    #         input_names.append(Aircraft.Engine.Propeller.ACTIVITY_FACTOR)
+    #         input_names.append(Aircraft.Engine.Propeller.INTEGRATED_LIFT_COEFFICIENT)
+            
+    #     if aviary_inputs.get_val(Aircraft.Engine.Propeller.COMPUTE_INSTALLATION_LOSS):
+    #         input_names.append(Aircraft.Nacelle.AVG_DIAMETER)
+
+    #     if (key in option_names) or (key in input_names):
+    #         return (1,)
+    #     else:
+    #         raise KeyError(f"variable {key} is not used by PropellerBuilder <{self.name}>")
+
+    def get_engine_options(self, aviary_inputs):
         message = f'Propeller <{self.name}>'
 
         names = [
@@ -141,18 +167,20 @@ class PropellerBuilder(SubsystemBuilderBase):
             names.append(Aircraft.Engine.Propeller.NUM_BLADES)
             
         d = {}
-        default = (None, None)
+        # default = (None, None)
         for name in names:
-            val, units = self.get_item(name, default)
+            # val, units = self.get_item(name, default)
+            val, units = aviary_inputs.get_item(name)
             if val == None:
-                raise ValueError(f"{message}: No value found for option {name}")
+                # raise ValueError(f"{message}: No value found for option {name}")
+                d[name] = {}
             else:
                 d[name] = {"val": val, "units": units}
 
         return d
 
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs):
         message = f'Propeller <{self.name}>'
 
         names = [
@@ -166,15 +194,17 @@ class PropellerBuilder(SubsystemBuilderBase):
             names.append(Aircraft.Engine.Propeller.ACTIVITY_FACTOR)
             names.append(Aircraft.Engine.Propeller.INTEGRATED_LIFT_COEFFICIENT)
 
-        if self.get_val(Aircraft.Engine.Propeller.COMPUTE_INSTALLATION_LOSS):
+        if aviary_inputs.get_val(Aircraft.Engine.Propeller.COMPUTE_INSTALLATION_LOSS):
             names.append(Aircraft.Nacelle.AVG_DIAMETER)
             
         d = {}
-        default = (None, None)
+        # default = (None, None)
         for name in names:
-            val, units = self.get_item(name, default)
+            # val, units = self.get_item(name, default)
+            val, units = self.get_item(name)
             if val == None:
-                raise ValueError(f"{message}: No value found for input {name}")
+                # raise ValueError(f"{message}: No value found for input {name}")
+                d[name] = {}
             else:
                 d[name] = {"val": val, "units": units}
 

@@ -134,20 +134,23 @@ class TurbopropModel(EngineModel):
         shp_model = self.shaft_power_model
         gearbox_model = self.gearbox_model
         propeller_model = self.propeller_model
+        # Is this all wrong?
+        # I think so: a plain old "openmdao.Group" wouldn't accept `aviary_options`.
+        # But at the moment I don't think any of these models have post-missions, so all the `turboprop_group.add_subsystem` calls are skipped.
         turboprop_group = om.Group()
 
         shp_model_post_mission = shp_model.build_post_mission(
-            aviary_inputs, phase_data, phase_mission_bus_lengths, **kwargs
+            self.options, phase_data, phase_mission_bus_lengths, **kwargs
         )
         if shp_model_post_mission is not None:
             turboprop_group.add_subsystem(
                 shp_model.name,
                 subsys=shp_model_post_mission,
-                aviary_options=aviary_inputs,
+                aviary_options=self.options,
             )
 
         gearbox_model_post_mission = gearbox_model.build_post_mission(
-            aviary_inputs,
+            self.options,
             phase_data,
             phase_mission_bus_lengths,
             **kwargs,
@@ -156,11 +159,11 @@ class TurbopropModel(EngineModel):
             turboprop_group.add_subsystem(
                 gearbox_model.name,
                 subsys=gearbox_model_post_mission,
-                aviary_options=aviary_inputs,
+                aviary_options=self.options,
             )
 
         propeller_model_post_mission = propeller_model.build_post_mission(
-            aviary_inputs,
+            self.options,
             phase_data,
             phase_mission_bus_lengths,
             **kwargs,
@@ -169,7 +172,7 @@ class TurbopropModel(EngineModel):
             turboprop_group.add_subsystem(
                 propeller_model.name,
                 subsys=propeller_model_post_mission,
-                aviary_options=aviary_inputs,
+                aviary_options=self.options,
             )
 
         return turboprop_group
@@ -194,7 +197,7 @@ class TurbopropModel(EngineModel):
             desvars.update(self.propeller_model.get_design_vars())
         return desvars
 
-    def get_engine_options(self):
+    def get_engine_options(self, aviary_inputs=None):
         d = {}
         if self.shaft_power_model is not None:
             d.update(self.shaft_power_model.get_engine_options())
@@ -205,7 +208,7 @@ class TurbopropModel(EngineModel):
 
         return d
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs=None):
         d = {}
         if self.shaft_power_model is not None:
             d.update(self.shaft_power_model.get_engine_inputs())
@@ -215,13 +218,35 @@ class TurbopropModel(EngineModel):
             d.update(self.propeller_model.get_engine_inputs())
 
         # Check if FIXED_RPM is present, and if so include that in the inputs.
-        default = (None, None)
-        val, units = self.get_item(Aircraft.Engine.FIXED_RPM, default)
+        # default = (None, None)
+        # val, units = self.get_item(Aircraft.Engine.FIXED_RPM, default)
+        val, units = self.get_item(Aircraft.Engine.FIXED_RPM)
         if not (val == None):
             d[Aircraft.Engine.FIXED_RPM] = {"val": val, "units": units}
 
         return d
 
+    # def get_var_shape(self, key, aviary_inputs):
+    #     if (key == Aircraft.Engine.FIXED_RPM) and (Aircraft.Engine.FIXED_RPM in aviary_inputs):
+    #         return (1,)
+
+    #     shapes = []
+    #     for model in [self.shaft_power_model, self.gearbox_model, self.propeller_model]:
+    #         if model is not None:
+    #             try:
+    #                 shape = model.get_var_shape(key, aviary_inputs)
+    #                 shapes.append(shape)
+    #             except KeyError:
+    #                 pass
+
+    #     if len(shapes) == 0:
+    #         raise KeyError(f"variable {key} is not used by TurbopropModel <{self.name}>")
+    #     elif not all(shape == shapes[0] for shape in shapes):
+    #         raise KeyError(f"variable {key} has different shapes in component models (gearbox, shaft power, propeller) in TurbopropModel <{self.name}>")
+    #     else:
+    #         shape = shapes[0]
+
+    #     return shape
 
 class TurbopropMission(om.Group):
     def initialize(self):

@@ -209,6 +209,36 @@ class EngineDeck(EngineModel):
 
         self._setup(data)
 
+        self._option_names = [
+            Aircraft.Engine.IGNORE_NEGATIVE_THRUST,
+            Aircraft.Engine.GEOPOTENTIAL_ALT,
+            Aircraft.Engine.REFERENCE_SLS_THRUST,
+            Aircraft.Engine.SCALE_PERFORMANCE,
+            Aircraft.Engine.GENERATE_FLIGHT_IDLE,
+            Aircraft.Engine.INTERPOLATION_METHOD,
+            Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION,
+            Aircraft.Engine.FUEL_FLOW_SCALER_CONSTANT_TERM,
+            Aircraft.Engine.FUEL_FLOW_SCALER_LINEAR_TERM,
+            Aircraft.Engine.SUBSONIC_FUEL_FLOW_SCALER,
+            Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
+            Aircraft.Engine.NUM_ENGINES]
+
+        if self.read_data_file:
+            self._options_names.append(Aircraft.Engine.DATA_FILE)
+
+        if self.get_val(Aircraft.Engine.GENERATE_FLIGHT_IDLE):
+            self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_THRUST_FRACTION)
+            self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_MIN_FRACTION)
+            self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_MAX_FRACTION)
+
+        for name in self.required_variables:
+            if name.startswith("aircraft:engine:") and (not (name in self._option_names)):
+                self._option_names.append(name)
+
+        self._input_names = [
+            Aircraft.Engine.SCALE_FACTOR,
+            Aircraft.Engine.SCALED_SLS_THRUST]
+
     def _preprocess_inputs(self):
         """
         Checks that provided options are valid and logically consistent. Raises errors
@@ -1610,11 +1640,17 @@ class EngineDeck(EngineModel):
         self.data_max_count = max_data_count
         self.data_indices = data_indices.astype(int)
 
-    def get_engine_options(self):
-        if self.read_from_file:
-            message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
-        else:
-            message = f'EngineDeck <{self.name}>'
+    # def get_var_shape(self, key, aviary_inputs):
+    #     if (key in self._option_names) or (key in self._input_names):
+    #         return (1,)
+    #     else:
+    #         raise KeyError(f"variable {key} is not used by EngineDeck <{self.name}>")
+
+    def get_engine_options(self, aviary_inputs=None):
+        # if self.read_from_file:
+        #     message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
+        # else:
+        #     message = f'EngineDeck <{self.name}>'
 
         d = {}
 
@@ -1633,22 +1669,25 @@ class EngineDeck(EngineModel):
             Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
             Aircraft.Engine.NUM_ENGINES]
 
-        # Use this engine model's metadata for default values and units.
-        meta_data = self.meta_data
+        # # Use this engine model's metadata for default values and units.
+        # meta_data = self.meta_data
 
         for name in names:
-            default = (meta_data[name]["default_value"], meta_data[name]["units"])
-            val, units = self.get_item(name, default)
+            # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+            # val, units = self.get_item(name, default)
+            val, units = self.get_item(name)
             if val == None:
-                raise ValueError(f"{message}: No value found for option {name}")
+                # raise ValueError(f"{message}: No value found for option {name}")
+                d[name] = {}
             else:
                 d[name] = {"val": val, "units": units}
 
         # Include the data file name if that's being used.
         if self.read_data_file:
             name = Aircraft.Engine.DATA_FILE
-            default = (meta_data[name]["default_value"], meta_data[name]["units"])
-            val, units = self.get_item(name, default)
+            # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+            # val, units = self.get_item(name, default)
+            val, units = self.get_item(name)
             d[name] = {"val": val, "units": units}
 
         # Include flight idle data if that's used.
@@ -1658,39 +1697,51 @@ class EngineDeck(EngineModel):
                 Aircraft.Engine.FLIGHT_IDLE_MIN_FRACTION,
                 Aircraft.Engine.FLIGHT_IDLE_MAX_FRACTION]
             for name in flight_idle_names:
-                default = (meta_data[name]["default_value"], meta_data[name]["units"])
-                val, units = self.get_item(name, default)
-                d[name] = {"val": val, "units": units}
+                # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+                # val, units = self.get_item(name, default)
+                val, units = self.get_item(name)
+                if val == None:
+                    d[name] = {}
+                else:
+                    d[name] = {"val": val, "units": units}
 
         # Also step through the required options the user passed when constructing this EngineDeck.
         # But only consider the ones that are specific to an engine model.
         for name in self.required_variables:
             if name.startswith("aircraft:engine:") and (not (name in d)):
-                default = (meta_data[name]["default_value"], meta_data[name]["units"])
-                val, units = self.get_item(name, default)
-                d[name] = {"val": val, "units": units}
+                # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+                # val, units = self.get_item(name, default)
+                val, units = self.get_item(name)
+                if val == None:
+                    d[name] = {}
+                else:
+                    d[name] = {"val": val, "units": units}
 
         return d
 
-    def get_engine_inputs(self):
-        if self.read_from_file:
-            message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
-        else:
-            message = f'EngineDeck <{self.name}>'
+    def get_engine_inputs(self, aviary_inputs=None):
+        # if self.read_from_file:
+        #     message = f'<{self.get_val(Aircraft.Engine.DATA_FILE)}>'
+        # else:
+        #     message = f'EngineDeck <{self.name}>'
 
         d = {}
 
-        # Use this engine model's metadata for default values and units.
-        meta_data = self.meta_data
+        # # Use this engine model's metadata for default values and units.
+        # meta_data = self.meta_data
 
         # First work on the engine-related inputs that `EngineDeck` always needs.
         names = [
             Aircraft.Engine.SCALE_FACTOR,
             Aircraft.Engine.SCALED_SLS_THRUST]
         for name in names:
-            default = (meta_data[name]["default_value"], meta_data[name]["units"])
-            val, units = self.get_item(name, default)
-            d[name] = {"val": val, "units": units}
+            # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+            # val, units = self.get_item(name, default)
+            val, units = self.get_item(name)
+            if val == None:
+                d[name] = {}
+            else:
+                d[name] = {"val": val, "units": units}
 
         return d
 

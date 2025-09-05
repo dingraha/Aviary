@@ -294,18 +294,14 @@ class EngineModel(SubsystemBuilderBase):
     #         f'been implemented in EngineModel <{self.name}>'
     #     )
 
-    def get_engine_options(self, aviary_inputs):
-        """
-        """
-        raise NotImplementedError(
-            'get_engine_options() is a required method but has not '
-            f'been implemented in EngineModel <{self.name}>'
-        )
+    # def get_engine_options(self, aviary_inputs):
+    #     raise NotImplementedError(
+    #         'get_engine_options() is a required method but has not '
+    #         f'been implemented in EngineModel <{self.name}>'
+    #     )
 
-    def get_engine_inputs(self, aviary_inputs):
-        """
-        """
-        raise NotImplementedError(
-            'get_engine_inputs() is a required method but has not '
-            f'been implemented in EngineModel <{self.name}>'
-        )
+    # def get_engine_inputs(self, aviary_inputs):
+    #     raise NotImplementedError(
+    #         'get_engine_inputs() is a required method but has not '
+    #         f'been implemented in EngineModel <{self.name}>'
+    #     )

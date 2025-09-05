@@ -24,6 +24,15 @@ class GearboxBuilder(SubsystemBuilderBase):
         self.include_constraints = include_constraints
         super().__init__(name)
 
+        self._option_names = []
+        self._input_names = [
+                Aircraft.Engine.RPM_DESIGN,
+                Aircraft.Engine.Gearbox.EFFICIENCY,
+                Aircraft.Engine.Gearbox.GEAR_RATIO,
+                Aircraft.Engine.Gearbox.SHAFT_POWER_DESIGN,
+                Aircraft.Engine.Gearbox.SPECIFIC_TORQUE,
+        ]
+
     def build_pre_mission(self, aviary_inputs):
         """Builds an OpenMDAO system for the pre-mission computations of the subsystem."""
         return GearboxPreMission(simple_mass=True)
@@ -117,25 +126,38 @@ class GearboxBuilder(SubsystemBuilderBase):
             constraints = {}
         return constraints
 
-    def get_engine_inputs(self):
-        message = f'Gearbox <{self.name}>'
+    def get_engine_options(self, aviary_inputs=None):
+        return {}
+
+    def get_engine_inputs(self, aviary_inputs):
+        # message = f'Gearbox <{self.name}>'
         d = {}
 
-        # Use this engine model's metadata for default values and units.
-        meta_data = self.meta_data
+        # # Use this engine model's metadata for default values and units.
+        # meta_data = self.meta_data
 
-        names = [
-                Aircraft.Engine.RPM_DESIGN,
-                Aircraft.Engine.Gearbox.EFFICIENCY,
-                Aircraft.Engine.Gearbox.GEAR_RATIO,
-                Aircraft.Engine.Gearbox.SHAFT_POWER_DESIGN,
-                Aircraft.Engine.Gearbox.SPECIFIC_TORQUE,
+        names = [Aircraft.Engine.RPM_DESIGN,
+                 Aircraft.Engine.Gearbox.EFFICIENCY,
+                 Aircraft.Engine.Gearbox.GEAR_RATIO,
+                 Aircraft.Engine.Gearbox.SHAFT_POWER_DESIGN,
+                 Aircraft.Engine.Gearbox.SPECIFIC_TORQUE,
         ]
         for name in names:
-            default = (meta_data[name]["default_value"], meta_data[name]["units"])
-            val, units = self.get_item(name, default)
-            d[name] = {"val": val, "units": units}
+            # default = (meta_data[name]["default_value"], meta_data[name]["units"])
+            # val, units = self.get_item(name, default)
+            # val, units = self.get_item(name)
+            val, units = aviary_inputs.get_item(name)
+            if val == None:
+                d[name] = {}
+            else:
+                d[name] = {"val": val, "units": units}
 
         return d
+
+    # def get_var_shape(self, key, aviary_inputs):
+    #     if (key in self._option_names) or (key in self._input_names):
+    #         return (1,)
+    #     else:
+    #         raise KeyError(f"variable {key} is not used by GearboxBuilder <{self.name}>")
 
 

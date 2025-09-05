@@ -79,6 +79,47 @@ class SubsystemBuilderBase(ABC):
         """
         return {}
 
+    def get_var_shape(self, key, aviary_inputs=None):
+        """
+        Return a tuple indicating the shape of the variable named `key`.
+
+        Parameters
+        ----------
+        key : str
+            Name of requested option.
+        aviary_inputs : dict
+            A dictionary containing the inputs to the subsystem.
+
+        Returns
+        -------
+        shape : tuple of ints
+        """
+        raise NotImplementedError(
+            'get_var_shape() is a required method but has not been '
+            'implemented',
+        )
+
+    def get_constraints(self):
+        """
+        Return a dictionary of constraints for the subsystem.
+
+        Optional, used if subsystems have path or boundary constraints.
+
+        Used in the phase builders (e.g. cruise_phase.py) when other constraints are added to the phase.
+
+        Returns
+        -------
+        constraints : dict
+            A dictionary where the keys are the names of the constraint variables
+            and the values are dictionaries with the following keys:
+
+            - type : str
+                The type of constraint. Must be one of 'path' or 'boundary'.
+            - any additional keyword arguments required by OpenMDAO for the constraint
+              variable.
+        """
+        return {}
+
     def get_controls(self, phase_name=None):
         """
         Return a dictionary of control variables for the subsystem.
@@ -392,11 +433,10 @@ class SubsystemBuilderBase(ABC):
         """
         return None
 
-
-    def get_engine_options(self):
+    def get_engine_options(self, aviary_inputs=None):
         return {}
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs=None):
         return {}
 
     def report(self, prob, reports_folder, **kwargs):

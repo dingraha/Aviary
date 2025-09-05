@@ -660,31 +660,25 @@ class CoreAerodynamicsBuilder(AerodynamicsBuilderBase):
         else:
             return {}
 
-    def get_engine_options(self):
-        if code_origin is GASP:
+    def get_engine_options(self, aviary_inputs=None):
+        if self.code_origin is GASP:
             message = f'GASP-based Mass <{self.name}>'
             names = []
 
-        elif code_origin is FLOPS:
+        elif self.code_origin is FLOPS:
             message = f'FLOPS-based Mass <{self.name}>'
             # try:
             #     method = kwargs.pop('method')
             # except KeyError:
             #     method = None
             names = [Aircraft.Engine.NUM_ENGINES]
+            # These are actually only relevant when `method == 'computed'`, but I'm not sure how to get that, since it's determined by the kwargs that are passed to `build_pre_mission` and `build_mission`.
+            # I guess I could also expect `kwargs` here, but where do they come from?
+            # Doesn't look like they are ever passed to the build_premission, based on `CorePreMission`.
+            names.extend(ENGINE_SIZED_INPUTS)
         else:
             raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
 
-        # d = {}
-        # for name in names:
-        #     default = (None, None)
-        #     val, units = self.get_item(name, default)
-        #     if val == None:
-        #         raise ValueError(f"{message}: No value found for option {name}")
-        #     else:
-        #         d[name] = {"val": val, "units": units}
-        #     meta = self.metadata[name]
-        #     d[name] = {"val": meta["default_value"], "units": meta["units"]}
         d = {name: {} for name in names}
 
         return d

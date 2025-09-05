@@ -144,16 +144,16 @@ class CoreMassBuilder(MassBuilderBase):
             f.write(f'# Mass estimation: {method}')
             write_markdown_variable_table(f, prob, outputs, self.meta_data)
 
-    def get_engine_options(self):
+    def get_engine_options(self, aviary_inputs=None):
         if code_origin is GASP:
-            message = f'GASP-based Mass <{self.name}>'
+            # message = f'GASP-based Mass <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES,
                     Aircraft.Engine.Type,
                     Aircraft.Engine.NUM_FUSELAGE_ENGINES,
                     Aircraft.Engine.ADDITIONAL_MASS_FRACTION]
 
         elif code_origin is FLOPS:
-            message = f'FLOPS-based Mass <{self.name}>'
+            # message = f'FLOPS-based Mass <{self.name}>'
             names = [
                 Aircraft.Engine.ADDITIONAL_MASS_FRACTION,
                 Aircraft.Engine.NUM_ENGINES,
@@ -164,46 +164,36 @@ class CoreMassBuilder(MassBuilderBase):
         else:
             raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
 
-        # d = {}
-        # default = (None, None)
-        # for name in names:
-        #     val, units = self.get_item(name, default)
-        #     if val == None:
-        #         raise ValueError(f"{message}: No value found for option {name}")
-        #     else:
-        #         d[name] = {"val": val, "units": units}
         d = {name: {} for name in names}
 
         return d
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs):
         if code_origin is GASP:
-            message = f'GASP-based Mass <{self.name}>'
+            # message = f'GASP-based Mass <{self.name}>'
             names = [Aircraft.Engine.SCALED_SLS_THRUST,
-                    Aircraft.Engine.MASS_SPECIFIC,
-                    Aircraft.Engine.PYLON_FACTOR,
-                    Aircraft.Engine.MASS_SCALER,
-                    Aircraft.Engine.WING_LOCATIONS,
-                    Aircraft.Engine.POD_MASS_SCALER,
-                    Aircraft.Engine.POSITION_FACTOR]
+                     Aircraft.Engine.MASS_SPECIFIC,
+                     Aircraft.Engine.PYLON_FACTOR,
+                     Aircraft.Engine.MASS_SCALER,
+                     Aircraft.Engine.POD_MASS_SCALER,
+                     Aircraft.Engine.POSITION_FACTOR]
 
         elif code_origin is FLOPS:
-            message = f'FLOPS-based Mass <{self.name}>'
+            # message = f'FLOPS-based Mass <{self.name}>'
             names = [Aircraft.Engine.SCALED_SLS_THRUST,
-                    Aircraft.Engine.MASS_SCALER,
-                    Aircraft.Engine.THRUST_REVERSERS_MASS,
-                    Aircraft.Engine.WING_LOCATIONS]
+                     Aircraft.Engine.MASS_SCALER,
+                     Aircraft.Engine.THRUST_REVERSERS_MASS]
         else:
             raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
 
-        # d = {}
-        # default = (None, None)
-        # for name in names:
-        #     val, units = self.get_item(name, default)
-        #     if val == None:
-        #         raise ValueError(f"{message}: No value found for input {name}")
-        #     else:
-        #         d[name] = {"val": val, "units": units}
         d = {name: {} for name in names}
+
+        num_wing_engines = aviary_inputs.get_val(Aircraft.Engine.NUM_WING_ENGINES)
+        # num_wing_engines should be a list of length equal to the number of engine models, with each entry indicating the number of wing engines for each engine model.
+        # So the total number of wing engines is the sum of the products of each entry.
+        # total_num_wing_engines = np.prod(num_wing_engines)
+        # (This is the same thing as the `Aircraft.Propulsion.TOTAL_NUM_WING_ENGINES`, but that variable isn't available when this method is called in `preprocess_propulsion`.)
+        # d[Aircraft.Engine.WING_LOCATIONS] = {"size": int(total_num_wing_engines/2)}
+        d[Aircraft.Engine.WING_LOCATIONS] = {"size": [int(nwe/2) for nwe in num_wing_engines]}
 
         return d

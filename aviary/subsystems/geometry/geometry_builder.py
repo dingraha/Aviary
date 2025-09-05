@@ -140,53 +140,43 @@ class CoreGeometryBuilder(GeometryBuilderBase):
 
         return params
 
-    def get_engine_options(self):
+    def get_engine_options(self, aviary_inputs=None):
         if code_origin is GASP:
-            message = f'GASP-based Geometry <{self.name}>'
+            # message = f'GASP-based Geometry <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES]
 
         elif code_origin is FLOPS:
-            message = f'FLOPS-based Geometry <{self.name}>'
+            # message = f'FLOPS-based Geometry <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES]
         else:
             raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
 
-        # d = {}
-        # default = (None, None)
-        # for name in names:
-        #     val, units = self.get_item(name, default)
-        #     if val == None:
-        #         raise ValueError(f"{message}: No value found for option {name}")
-        #     else:
-        #         d[name] = {"val": val, "units": units}
         d = {name: {} for name in names}
 
         return d
 
-    def get_engine_inputs(self):
+    def get_engine_inputs(self, aviary_inputs):
         if code_origin is GASP:
-            message = f'GASP-based Geometry <{self.name}>'
+            # message = f'GASP-based Geometry <{self.name}>'
             names = [Aircraft.Engine.REFERENCE_DIAMETER, Aircraft.Engine.SCALE_FACTOR]
+            d = {name: {} for name in names}
+
             has_hybrid_system, _ = aviary_inputs.get_item(Aircraft.Electrical.HAS_HYBRID_SYSTEM, defaults=(False, None))
             if has_hybrid_system:
-                names.append(Aircraft.Engine.WING_LOCATIONS)
+                num_wing_engines = aviary_inputs.get_val(Aircraft.Engine.NUM_WING_ENGINES)
+                # num_wing_engines should be a list of length equal to the number of engine models, with each entry indicating the number of wing engines for each engine model.
+                # So the total number of wing engines is the sum of the products of each entry.
+                # total_num_wing_engines = np.prod(num_wing_engines)
+                # (This is the same thing as the `Aircraft.Propulsion.TOTAL_NUM_WING_ENGINES`, but that variable isn't available when this method is called in `preprocess_propulsion`.)
+                # d[Aircraft.Engine.WING_LOCATIONS] = {"size": int(total_num_wing_engines/2)}
+                d[Aircraft.Engine.WING_LOCATIONS] = {"size": [int(nwe/2) for nwe in num_wing_engines]}
 
         elif code_origin is FLOPS:
-            message = f'FLOPS-based Geometry <{self.name}>'
+            # message = f'FLOPS-based Geometry <{self.name}>'
             names = []
+            d = {}
         else:
             raise ValueError('Code origin is not one of the following: (FLOPS, GASP)')
-
-        # d = {}
-        # default = (None, None)
-        # for name in names:
-        #     val, units = self.get_item(name, default)
-        #     if val == None:
-        #         raise ValueError(f"{message}: No value found for input {name}")
-        #     else:
-        #         d[name] = {"val": val, "units": units}
-        #     d[name] = {}
-        d = {name: {} for name in names}
 
         return d
 

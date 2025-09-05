@@ -539,6 +539,8 @@ def preprocess_propulsion(
     # It is assumed that all EngineModels are up-to-date at this point and will NOT
     # be changed later on (otherwise preprocess_propulsion must be run again)
     num_engine_type = len(engine_models)
+    # Default size for a non-engine subsystem is a length-num_engine_models list of 1s.
+    sz_default_subsys = [1 for _ in num_engine_type]
 
     # complete_options_list = AviaryValues(aviary_options)
     # for engine in engine_models:
@@ -548,13 +550,14 @@ def preprocess_propulsion(
     #     d = {k: (v["val"], v["units"]) for k, v in engine.get_engine_inputs().items()}
     #     complete_options_list.update(**d)
 
-    update_options_list = list(get_keys(aviary_options))
+    # update_options_set = set(get_keys(aviary_options))
+    update_options_set = set()
     for engine in engine_models:
-        update_options_list.extend(list(engine.get_engine_options().keys()))
+        update_options_set.update(engine.get_engine_options().keys())
     for subsys in all_subsystems:
-        update_options_list.extend(list(subsys.get_engine_options().keys()))
+        update_options_set.update(subsys.get_engine_options().keys())
 
-    for var in update_options_list:
+    for var in update_options_set:
         if (var.startswith('aircraft:engine:') or var.startswith('aircraft.nacelle:')) and meta_data[var]['option']:
             dtype = meta_data[var]['types']
             default_value = meta_data[var]['default_value']
@@ -589,18 +592,178 @@ def preprocess_propulsion(
 
             # Priority order is (checked per engine):
             # 1. EngineModel.options
-            # 2. aviary_options
-            # 3. default value from metadata
-            for i, engine in enumerate(engine_models):
+            # 2. non-engine model subsystems
+            # 3. aviary_options
+            # 4. default value from metadata
+            # but to avoid multiple loops over the non-engine model subsystems, we'll loop over them first
+
+            val_aviary_options = aviary_options.get_val(var, units)
+
+            vals_subsys = []
+            subsys_with_val = []
+            for subsys in all_subsystems:
+                subsys_options = subsys.get_engine_options(aviary_options)
+
+                if var in subsys_options:
+                    # This subsystem also uses this variable.
+                    var_info_subsys = subsys_options[var]
+
+                    sz_subsys = var_info_subsys.get("size", default=sz_default_subsys)
+
+                    # Does it have a value for the variable?
+                    if "val" in var_info_subsys:
+                        # Get value.
+                        val = np.atleast_1d(var_info_subsys["val"])
+
+                        # Check that `val` is the size we want.
+                        sz_expected = np.prod(sz_subsys)
+                        if val.size != sz_expected:
+                            raise ValueError(f"variable {var} in Model <{subsys.name}> does not have expected size {sz_expected}")
+
+                        # Save this value.
+                        vals_subsys.append(val)
+                        # Remember which models we found a value in.
+                        subsys_with_val.append(subsys)
+
+            if vals_subsys:
+                # Check if all the values found in the non-engine subsystems are the same.
+                if not np.allclose(vals_subsys[0], vals_subsys):
+                    subsys_names = [s.name for s in subsys_with_val]
+                    raise ValueError(f"non-identical values for variable {var} found in multiple subsystems: {subsys_names}")
+
+                val = vals_subsys[0]
+
+            idx_var = 0
+            for idx_engine_model, engine in enumerate(engine_models):
                 eng_name = engine.name
                 # test to see if engine has this variable - if so, use it
-                try:
-                    # variables in engine models are trusted to be "safe", and only
-                    # contain data for that engine
-                    engine_val = engine.get_val(var, units)
-                # if the variable is not in the engine model, try the other subsystems:
-                except KeyError:
+                # try:
+                #     # variables in engine models are trusted to be "safe", and only
+                #     # contain data for that engine
+                #     engine_val = engine.get_val(var, units)
+                # # if the variable is not in the engine model, try the other subsystems:
+
+                # First, check if the variable is an option needed by the current engine model.
+                eng_options = engine.get_engine_options(aviary_options)
+                if var in eng_options:
+                    # This engine option is used by this engine model.
+                    # Get the info associated with it:
+                    var_info = eng_options[var]
+
+                    # Get the expected size, defaulting to 1.
+                    sz = var_info.get("size", default=1)
+
+                    # Check if the value of the variable is known.
+                    if "val" in var_info:
+                        # Get the value, and confirm that the size is correct.
+                        val = np.atleast_1d(var_info["val"])
+                        if val.size != sz:
+                            raise ValueError(f"variable {var} in EngineModel <{eng_name}> does not have expected size {sz}")
+
+                    else:
+                        # We know the engine model needs variable `var`, but it isn't present in the engine model.
+                        # So look for it elsewhere.
+                        vals = []
+                        subsys_with_val = []
+                        for subsys in all_subsystems:
+                            subsys_options = subsys.get_engine_options(aviary_options)
+
+                            if var in subsys_options:
+                                # This subsystem also uses this variable.
+                                var_info_subsys = subsys_options[var]
+
+                                sz_subsys = var_info_subsys.get("size", default=sz_default_subsys)[idx_engine_model]
+                                if not (sz_subsys == sz):
+                                    raise ValueError(f"variable {var} in Model <{subsys.name}> for engine model <{eng_name}> is expected to have size {sz_subsys} but <{eng_name}> expects size {sz}")
+
+                                # Does it have a value for the variable?
+                                if "val" in var_info_subsys:
+                                    # Get the part of the val relavant to this engine model.
+                                    val = np.atleast_1d(var_info_subsys["val"][idx_var:idx_var+sz])
+
+                                    # Python will accept slices that extend past the end of the list.
+                                    # So check that `val` is the size we want.
+                                    # If it isn't, this implies that there are fewer values in `val` than we expected.
+                                    if val.size != sz:
+                                        raise ValueError(f"variable {var} in Model <{subsys.name}> has too few values")
+
+                                    # Save this value.
+                                    vals.append(val)
+                                    # Remember which models we found a value in.
+                                    subsys_with_val.append(subsys)
+
+                        if vals:
+                            # Check if all the values found in the non-engine subsystems are the same.
+                            if not np.allclose(vals[0], vals):
+                                subsys_names = [s.name for s in subsys_with_val]
+                                raise ValueError(f"non-identical values for variable {var} found in multiple subsystems: {subsys_names}")
+
+                            val = vals[0]
+                        else:
+                            # Check if the variable is in `aviary_options`.
+
+
+                            # We didn't find a value for this variable anywhere, so take the default value.
+                            # Repeat the default value to the correct size if it's a scalar.
+                            if not (type(default_value) in [list, tuple, np.ndarray]):
+                                # Default value is a scalar, so repeat it to the required size.
+                                val = np.tile(default_value, sz)
+                            else:
+                                # Default value is an iterable, so check if it's the correct size.
+                                val = np.atleast_1d(default_value)
+                                if val.size != sz:
+                                    raise ValueError(f"variable {var} taken from metadata `default_value` does not have expected size {sz}")
+
+                else:
+                    # `var` is not an option needed by this engine model.
+                    # But check if it's needed by anyone else.
+                    vals = []
+                    sizes = []
+                    subsys_with_var = []
+                    subsys_with_val = []
                     for subsys in all_subsystems:
+                        subsys_options = subsys.get_engine_options(aviary_options)
+
+                        if var in subsys_options:
+                            # This subsystem needs this variable.
+                            var_info_subsys = subsys_options[var]
+
+                            # Get the expected size, defaulting to 1.
+                            sz = var_info_subsys.get("size", default=1)
+                            sizes.append(sz)
+                            subsys_with_var.append(subsys)
+
+                            # Does it have a value for the variable?
+                            if "val" in var_info_subsys:
+                                # Has a value.
+                                val = np.atleast_1d(var_info_subsys["val"])
+
+                                # Does it match the expected size?
+                                if val.size != sz:
+                                    raise ValueError(f"variable {var} in Model <{subsys.name}> does not have expected size {sz}")
+
+                                # Save the value we found.
+                                vals.append(val)
+                                subsys_with_val.append(subsys)
+
+                    # Did we find this variable in anything?
+                    if sizes:
+                        # We did, so check that all subsystems agree on the size.
+                        if not np.allclose(sizes[0], sizes):
+                            subsys_names = [s.name for s in subsys_with_var]
+                            raise ValueError(f"conflicting sizes for variable {var} found for subsystems {subsys_names}")
+
+                        # Did we find any values for this variable in the subsystem?
+                        if vals:
+
+                    else:
+                        # Didn't find this variable anywhere.
+                        # So, take the default value.
+
+                # Add a flattened version of the value to `vec`.
+                # This will work for `ndarray`s with `ndim > 1`, but I don't think Aviary as a whole actually supports that sort of thing.
+                vec.extend(val.flat)
+                idx_var += sz
 
 
     # # Add in the engine variables associated with all the subsystems.
@@ -813,7 +976,7 @@ def preprocess_propulsion(
     total_num_wing_engines = int(sum(num_wing_engines_all))
 
     # compute propulsion-level engine count totals here
-    aviary_options.set_val(Aircraft.Propulsion.TOTAL_NUM_ENGINES, total_num_engines)
+    aviary_options.set_val(Aircraft.Propulsion.TWING_LOCATIONSOTAL_NUM_ENGINES, total_num_engines)
     aviary_options.set_val(Aircraft.Propulsion.TOTAL_NUM_FUSELAGE_ENGINES, total_num_fuse_engines)
     aviary_options.set_val(Aircraft.Propulsion.TOTAL_NUM_WING_ENGINES, total_num_wing_engines)
 

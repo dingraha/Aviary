@@ -68,6 +68,9 @@ class MotorBuilder(SubsystemBuilderBase):
         # self.include_constraints = include_constraints
         super().__init__(name)
 
+        # self._option_names = [Aircraft.Engine.RPM_DESIGN]
+        # self._input_names = [Aircraft.Engine.SCALE_FACTOR]
+
     def build_pre_mission(self, aviary_inputs):
         return MotorPreMission(aviary_inputs=aviary_inputs)  # , simple_mass=True)
 
@@ -142,3 +145,48 @@ class MotorBuilder(SubsystemBuilderBase):
             Dynamic.Vehicle.Propulsion.SHAFT_POWER_MAX,
             Dynamic.Vehicle.Propulsion.ELECTRIC_POWER_IN,
         ]
+
+    def get_engine_options(self, aviary_inputs=None):
+        d = {}
+
+        names = [
+            Aircraft.Engine.RPM_DESIGN,
+        ]
+
+        for name in names:
+            if aviary_inputs:
+                val, units = aviary_inputs.get_item(name)
+                if val == None:
+                    d[name] = {}
+                else:
+                    d[name] = {"val": val, "units": units}
+            else:
+                d[name] = {}
+
+        return d
+
+    def get_engine_inputs(self, aviary_inputs=None):
+        d = {}
+
+        names = [
+            Aircraft.Engine.SCALE_FACTOR,
+        ]
+
+        for name in names:
+            if aviary_inputs:
+                val, units = aviary_inputs.get_item(name)
+                if val == None:
+                    d[name] = {}
+                else:
+                    d[name] = {"val": val, "units": units}
+            else:
+                d[name] = {}
+
+        return d
+
+    # def get_var_shape(self, aviary_inputs):
+    #     if (key in self._option_names) or (key in self._input_names):
+    #         return (1,)
+    #     else:
+    #         raise KeyError(f"variable {key} is not used by MotorBuilder <{self.name}>")
+
