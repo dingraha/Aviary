@@ -145,6 +145,7 @@ class CoreMassBuilder(MassBuilderBase):
             write_markdown_variable_table(f, prob, outputs, self.meta_data)
 
     def get_engine_options(self, aviary_inputs=None):
+        code_origin = self.code_origin
         if code_origin is GASP:
             # message = f'GASP-based Mass <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES,
@@ -169,6 +170,7 @@ class CoreMassBuilder(MassBuilderBase):
         return d
 
     def get_engine_inputs(self, aviary_inputs):
+        code_origin = self.code_origin
         if code_origin is GASP:
             # message = f'GASP-based Mass <{self.name}>'
             names = [Aircraft.Engine.SCALED_SLS_THRUST,

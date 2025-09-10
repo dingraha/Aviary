@@ -141,6 +141,7 @@ class CoreGeometryBuilder(GeometryBuilderBase):
         return params
 
     def get_engine_options(self, aviary_inputs=None):
+        code_origin = self.code_origin
         if code_origin is GASP:
             # message = f'GASP-based Geometry <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES]
@@ -156,6 +157,7 @@ class CoreGeometryBuilder(GeometryBuilderBase):
         return d
 
     def get_engine_inputs(self, aviary_inputs):
+        code_origin = self.code_origin
         if code_origin is GASP:
             # message = f'GASP-based Geometry <{self.name}>'
             names = [Aircraft.Engine.REFERENCE_DIAMETER, Aircraft.Engine.SCALE_FACTOR]

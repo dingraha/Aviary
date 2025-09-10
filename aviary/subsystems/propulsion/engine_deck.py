@@ -223,15 +223,16 @@ class EngineDeck(EngineModel):
             Aircraft.Engine.SUPERSONIC_FUEL_FLOW_SCALER,
             Aircraft.Engine.NUM_ENGINES]
 
-        if self.read_data_file:
-            self._options_names.append(Aircraft.Engine.DATA_FILE)
+        if self.read_from_file:
+            self._option_names.append(Aircraft.Engine.DATA_FILE)
 
         if self.get_val(Aircraft.Engine.GENERATE_FLIGHT_IDLE):
             self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_THRUST_FRACTION)
             self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_MIN_FRACTION)
             self._option_names.append(Aircraft.Engine.FLIGHT_IDLE_MAX_FRACTION)
 
-        for name in self.required_variables:
+        for var in self.required_variables:
+            name = var.value
             if name.startswith("aircraft:engine:") and (not (name in self._option_names)):
                 self._option_names.append(name)
 
@@ -1683,7 +1684,7 @@ class EngineDeck(EngineModel):
                 d[name] = {"val": val, "units": units}
 
         # Include the data file name if that's being used.
-        if self.read_data_file:
+        if self.read_from_file:
             name = Aircraft.Engine.DATA_FILE
             # default = (meta_data[name]["default_value"], meta_data[name]["units"])
             # val, units = self.get_item(name, default)
@@ -1707,7 +1708,8 @@ class EngineDeck(EngineModel):
 
         # Also step through the required options the user passed when constructing this EngineDeck.
         # But only consider the ones that are specific to an engine model.
-        for name in self.required_variables:
+        for var in self.required_variables:
+            name = var.value
             if name.startswith("aircraft:engine:") and (not (name in d)):
                 # default = (meta_data[name]["default_value"], meta_data[name]["units"])
                 # val, units = self.get_item(name, default)
