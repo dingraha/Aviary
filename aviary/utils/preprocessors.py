@@ -491,7 +491,7 @@ def preprocess_crewpayload(aviary_options: AviaryValues, meta_data=_MetaData, ve
 
     return aviary_options
 
-def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options):
+def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options, verbosity):
 
     ##############################
     # Vectorize Engine Variables #
@@ -590,17 +590,14 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     # Get the size of this variable.
                     var_info_subsys = subsys_options[var]
                     sz_subsys = var_info_subsys.get("size", sz_default_subsys)
-                    # if var == "aircraft:engine:wing_locations":
-                    #     num_wing_engines = aviary_options.get_val(Aircraft.Engine.NUM_WING_ENGINES)
-                    #     print(f"var = {var}, subsys.name = {subsys.name}, sz_subsys = {sz_subsys}, num_wing_engines = {num_wing_engines}")
 
                     # The size declared by a non-engine subsystem should be length `num_engine_type`.
                     if not (len(sz_subsys) == num_engine_type):
                         raise ValueError(f"size declared for variable {var} by subsystem <{subsys.name}> should be a list of length {num_engine_type}, but has length {len(sz_subsys)}")
                     if not multidimensional:
-                        # A non-multidimensional variable means we expect a scalar variable per engine model, so the `sz_subsys` should be all ones.
-                        if not all(sz == 1 for sz in sz_subsys):
-                            raise ValueError(f"non-multidimensional variable {var} has at least one non-1 size declared by subsystem <{subsys.name}>")
+                        # A non-multidimensional variable means we expect a scalar variable per engine model, so the `sz_subsys` should be all ones or zeros.
+                        if not all(((sz == 1) or (sz == 0)) for sz in sz_subsys):
+                            raise ValueError(f"non-multidimensional variable {var} has at least one non-0 or non-1 size declared by subsystem <{subsys.name}>")
 
                     # Save the size for checking later.
                     szs_subsys.append(sz_subsys)
@@ -608,12 +605,15 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     # Does it have a value for the variable?
                     if "val" in var_info_subsys:
                         # Get value.
-                        units_subsys = var_info_subsys.get("units", default="unitless")
-                        val = convert_units(np.atleast_1d(var_info_subsys["val"]), units_subsys, units)
+                        units_subsys = var_info_subsys.get("units", "unitless")
+                        val = np.atleast_1d(var_info_subsys["val"])
+                        if not (units_subsys == "unitless"):
+                            val = convert_units(val, units_subsys, units)
 
                         # Check that `val` is the size we want.
                         sz_expected = np.sum(sz_subsys)
                         if val.size != sz_expected:
+                            print(val, val.size, sz_expected)
                             raise ValueError(f"variable {var} in Model <{subsys.name}> does not have expected size {sz_expected}")
 
                         # Save this value.
@@ -629,7 +629,8 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                 else:
                     sz_all_engines = szs_subsys[0]
             elif not multidimensional:
-                # A non-multidimensional engine variable should just have a size of 1 for each engine model:
+                # None of the non-engine subsystems declared a size for the variable.
+                # So, for a non-multidimensional engine variable, default to a size of 1 for each engine model:
                 sz_all_engines = sz_default_subsys
             else:
                 sz_all_engines = []
@@ -698,36 +699,89 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     # Check if the size matches what we found earlier from the non-engine subsystems (if we found any), or that it's 1 for non-multidimensional variables.
                     if sz_all_engines:
                         if not (sz == sz_all_engines[idx_engine_model]):
-                            raise ValueError(f"declared size {sz} for variable {var} in EngineModel <{eng_name}> does not match expected value {sz_all_engines[idx_engine_model]}")
+                            raise ValueError(f"declared size {sz} for variable {var} in EngineModel <{eng_name}> does not match expected size {sz_all_engines[idx_engine_model]}")
                      
                     # Check if the value of the variable is known.
                     if "val" in var_info:
                         # Get the value, and confirm that the size is correct.
                         units_engine = var_info.get("units", "unitless")
-                        if type(var_info["val"]) in (int, float, np.int32, np.int64, np.float32, np.float64):
-                            val = convert_units(np.atleast_1d(var_info["val"]), units_engine, units)
-                        else:
-                            val = np.atleast_1d(var_info["val"])
+                        val = np.atleast_1d(var_info["val"])
+                        if type(var_info["val"]) in (int, float, np.int32, np.int64, np.float32, np.float64) and not (units == "unitless"):
+                            val = convert_units(val, units_engine, units)
                         if val.size != sz:
-                            raise ValueError(f"variable {var} in EngineModel <{eng_name}> does not have expected size {sz}")
+                            raise ValueError(f"variable {var} in EngineModel <{eng_name}> does not have expected size {sz}, but has size {val.size}")
 
-                    elif val_subsys:
+                        # If the value we found in the engine model doesn't match what was in the non-engine subsystems, then raise a warning.
+                        if (len(val_subsys) > 0) and (not np.allclose(val, val_subsys[idx_var:idx_var+sz])):
+                            if verbosity >= Verbosity.BRIEF:
+                                warnings.warn(
+                                    f'value {val} for variable {var} in engine model <{eng_name}> is different from value {val_subsys[idx_var:idx_var+sz]} '
+                                    'found in a non-engine subsystem. The engine model value will be used.'
+                                )
+
+                        if (len(val_aviary_options) > 0):
+                            val_ao = val_aviary_options[idx_var:idx_var+sz]
+                            if not (val_ao.size == sz):
+                                raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size")
+                            if not np.allclose(val, val_ao):
+                                if verbosity >= Verbosity.BRIEF:
+                                    warnings.warn(
+                                        f'value {val} for variable {var} in engine model <{eng_name}> is different from value {val_ao} '
+                                        'found in the aviary_options argument. The engine model value will be used.'
+                                    )
+
+                    elif len(val_subsys) > 0:
                         # We know the engine model needs variable `var`, but it isn't present in the engine model.
                         # We also know the size.
-                        # So, e can take it from the values found in the non-engine subsystems.
+                        # So, we can take it from the values found in the non-engine subsystems.
                         val = val_subsys[idx_var:idx_var+sz]
                         # Do we need to check the length of that?
                         # We've checked that `val_subsys`'s size matches the size declared in the non-engine subsystems, and we've checked that the size declared in the engine model for this variable matches the size declared in the non-engine subsystem.
                         # So then I think part of the `val_subsys` that we're slicing will also be good.
+
+                        # But if we found a value in the aviary_options argument that's different, warn the user about that.
+                        if (len(val_aviary_options) > 0):
+                            val_ao = val_aviary_options[idx_var:idx_var+sz]
+                            if not (val_ao.size == sz):
+                                if verbosity >= Verbosity.BRIEF:
+                                    warnings.warn(
+                                        f'value {val_ao} for variable {var} intended for engine model <{eng_name}> is too small, '
+                                        f'but an appropriately-sized value {val} was found in a non-engine subsystem and will be used.'
+                                    )
+                            if not np.allclose(val, val_ao):
+                                if verbosity >= Verbosity.BRIEF:
+                                    warnings.warn(
+                                        f'value {val} for variable {var} taken from a non-engine subsystem for engine model <{eng_name}> is different from value {val_ao} '
+                                        'found in the aviary_options argument. The non-engine subsystem value will be used.'
+                                    )
+
+                        # Add the value to the engine model's `options` attribute.
+                        if multidimensional:
+                            engine.set_val(var, val, units)
+                        else:
+                            engine.set_val(var, val[0], units)
+
                     elif len(val_aviary_options) > 0:
                         # We don't have a value from either the engine model or the non-engine subsystems for this variable, but we did find something in `aviary_options`.
                         # Get the value for this engine model from that, and check that we have enough values.
                         val = val_aviary_options[idx_var:idx_var+sz]
                         if not (val.size == sz):
                             raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size")
+
+                        # Add the value to the engine model's `options` attribute.
+                        if multidimensional:
+                            engine.set_val(var, val, units)
+                        else:
+                            engine.set_val(var, val[0], units)
                     else:
                         # Only place left to get a value is from the default value in the metadata.
                         val = np.tile(default_value, sz)
+
+                        # Add the value to the engine model's `options` attribute.
+                        if multidimensional:
+                            engine.set_val(var, val, units)
+                        else:
+                            engine.set_val(var, val[0], units)
 
                     # Add a flattened version of the value to `vec`.
                     # This will work for `ndarray`s with `ndim > 1`, but I don't think Aviary as a whole actually supports that sort of thing.
@@ -750,7 +804,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     if sz_all_engines:
                         sz_subsys_this_engine = sz_all_engines[idx_engine_model]
 
-                        if val_subsys:
+                        if len(val_subsys) > 0:
                             val = val_subsys[idx_var:idx_var+sz_subsys_this_engine]
                         elif len(val_aviary_options) > 0:
                             val = val_aviary_options[idx_var:idx_var+sz_subsys_this_engine]
@@ -791,7 +845,6 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
             # If data is numerical, store in a numpy array, else use a list
             # Some machines default to specific-bit np array types, so we have to
             # check for those too
-            # print(f"do_options = {do_options}, var = {var}, vec = {vec}, sz_all_engines = {sz_all_engines}, sz_engine_models = {sz_engine_models}")
             if type(vec[0]) in (int, float, np.int32, np.int64, np.float32, np.float64):
                 vec = np.array(vec, dtype=dtype)
             aviary_options.set_val(var, vec, units)
@@ -954,7 +1007,7 @@ def preprocess_propulsion(
     #             vec = np.array(vec, dtype=dtype)
     #         aviary_options.set_val(var, vec, units)
 
-    _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options=True)
+    _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options=True, verbosity=verbosity)
 
     ###################################
     # Input/Option Consistency Checks #
@@ -1054,7 +1107,7 @@ def preprocess_propulsion(
     aviary_options.set_val(Aircraft.Propulsion.TOTAL_NUM_WING_ENGINES, total_num_wing_engines)
 
     # Now that we have the correct options, do the engine inputs, too.
-    _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options=False)
+    _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_data, do_options=False, verbosity=verbosity)
 
 def _get_engine_variables():
     """Yields all propulsion-related variables in Aircraft that need to be vectorized."""
