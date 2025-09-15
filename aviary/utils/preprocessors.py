@@ -593,11 +593,11 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
 
                     # The size declared by a non-engine subsystem should be length `num_engine_type`.
                     if not (len(sz_subsys) == num_engine_type):
-                        raise ValueError(f"size declared for variable {var} by subsystem <{subsys.name}> should be a list of length {num_engine_type}, but has length {len(sz_subsys)}")
+                        raise ValueError(f"size declared for variable {var} by subsystem <{subsys.name}> should be a list of length {num_engine_type}, but has length {len(sz_subsys)}") # tested
                     if not multidimensional:
                         # A non-multidimensional variable means we expect a scalar variable per engine model, so the `sz_subsys` should be all ones or zeros.
                         if not all(((sz == 1) or (sz == 0)) for sz in sz_subsys):
-                            raise ValueError(f"non-multidimensional variable {var} has at least one non-0 or non-1 size declared by subsystem <{subsys.name}>")
+                            raise ValueError(f"non-multidimensional variable {var} has at least one non-0 or non-1 size declared by subsystem <{subsys.name}>") # tested
 
                     # Save the size for checking later.
                     szs_subsys.append(sz_subsys)
@@ -614,7 +614,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                         sz_expected = np.sum(sz_subsys)
                         if val.size != sz_expected:
                             print(val, val.size, sz_expected)
-                            raise ValueError(f"variable {var} in Model <{subsys.name}> does not have expected size {sz_expected}")
+                            raise ValueError(f"variable {var} in Model <{subsys.name}> does not have expected size {sz_expected}") # tested
 
                         # Save this value.
                         vals_subsys.append(val)
@@ -625,7 +625,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                 # Check that the sizes found in all the subsystems match.
                 if not all(sz == szs_subsys[0] for sz in szs_subsys):
                     subsys_names = [s.name for s in subsys_with_var]
-                    raise ValueError(f"non-identical sizes for variable {var} found in multiple subsystems: {subsys_names}")
+                    raise ValueError(f"non-identical sizes for variable {var} found in multiple subsystems: {subsys_names}") # tested
                 else:
                     sz_all_engines = szs_subsys[0]
             elif not multidimensional:
@@ -639,7 +639,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                 # Check if all the values found in the non-engine subsystems are the same.
                 if not np.allclose(vals_subsys[0], vals_subsys):
                     subsys_names = [s.name for s in subsys_with_val]
-                    raise ValueError(f"non-identical values for variable {var} found in multiple subsystems: {subsys_names}")
+                    raise ValueError(f"non-identical values for variable {var} found in multiple subsystems: {subsys_names}") # tested
 
                 val_subsys = vals_subsys[0]
             else:
@@ -651,7 +651,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     if multidimensional:
                         # If the current variable is multidimensional, then the value stored in `aviary_options` must be the correct size, i.e., values for all engines must be provided.
                         if not (val_aviary_options.size == np.sum(sz_all_engines)):
-                            raise ValueError(f"size {val_aviary_options.size} of variable {var} found in aviary_options incompatible with sizes {sz_all_engines} found in non-engine subsystems")
+                            raise ValueError(f"size {val_aviary_options.size} of variable {var} found in aviary_options incompatible with sizes {sz_all_engines} found in non-engine subsystems") # tested
                     else:
                         # For non-multidimensional options, then we expect just one value per engine model.
                         num_val_aviary_options = len(val_aviary_options)
@@ -661,7 +661,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                         elif num_val_aviary_options > 1:
                             # If we found more than one value, then we expect to have `num_engines_type` values.
                             if not (num_val_aviary_options == num_engine_type):
-                                raise ValueError(f"incorrect number of values found for variable {var} in aviary_options: expected {num_engine_type} values (one per engine model), but found {num_val_aviary_options}")
+                                raise ValueError(f"incorrect number of values found for variable {var} in aviary_options: expected {num_engine_type} values (one per engine model), but found {num_val_aviary_options}") # tested
 
             # Do we know the size of this variable now?
             # * If any of the non-engine subsystems use this variable, then yes, because I've either checked what size the non-engine subsystem provided, or asummed it was scalar.
@@ -699,7 +699,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                     # Check if the size matches what we found earlier from the non-engine subsystems (if we found any), or that it's 1 for non-multidimensional variables.
                     if sz_all_engines:
                         if not (sz == sz_all_engines[idx_engine_model]):
-                            raise ValueError(f"declared size {sz} for variable {var} in EngineModel <{eng_name}> does not match expected size {sz_all_engines[idx_engine_model]}")
+                            raise ValueError(f"declared size {sz} for variable {var} in EngineModel <{eng_name}> does not match expected size {sz_all_engines[idx_engine_model]}") # tested
                      
                     # Check if the value of the variable is known.
                     if "val" in var_info:
@@ -709,7 +709,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                         if type(var_info["val"]) in (int, float, np.int32, np.int64, np.float32, np.float64) and not (units == "unitless"):
                             val = convert_units(val, units_engine, units)
                         if val.size != sz:
-                            raise ValueError(f"variable {var} in EngineModel <{eng_name}> does not have expected size {sz}, but has size {val.size}")
+                            raise ValueError(f"variable {var} in EngineModel <{eng_name}> does not have expected size {sz}, but has size {val.size}") # tested
 
                         # If the value we found in the engine model doesn't match what was in the non-engine subsystems, then raise a warning.
                         if (len(val_subsys) > 0) and (not np.allclose(val, val_subsys[idx_var:idx_var+sz])):
@@ -722,7 +722,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                         if (len(val_aviary_options) > 0):
                             val_ao = val_aviary_options[idx_var:idx_var+sz]
                             if not (val_ao.size == sz):
-                                raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size")
+                                raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size") # tested
                             if not np.allclose(val, val_ao):
                                 if verbosity >= Verbosity.BRIEF:
                                     warnings.warn(
@@ -766,7 +766,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                         # Get the value for this engine model from that, and check that we have enough values.
                         val = val_aviary_options[idx_var:idx_var+sz]
                         if not (val.size == sz):
-                            raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size")
+                            raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size") # tested
 
                         # Add the value to the engine model's `options` attribute.
                         if multidimensional:
@@ -808,6 +808,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
                             val = val_subsys[idx_var:idx_var+sz_subsys_this_engine]
                         elif len(val_aviary_options) > 0:
                             val = val_aviary_options[idx_var:idx_var+sz_subsys_this_engine]
+                            # I don't think there's any reason to test for this, since we've already confirmed that `val_aviary_options` has the expected size.
                             if not (val.size == sz_subsys_this_engine):
                                 raise ValueError(f"value for variable {var} taken from aviary_options argument has too-small size")
                         else:
@@ -835,6 +836,7 @@ def _reconcile_engine_vars(aviary_options, all_subsystems, engine_models, meta_d
             if sz_all_engines:
                 # Check that the size we found with the non-engine subsystems (or non-multidimensional variable) matches what the engine models declared.
                 # But if the size in `sz_engine` is 0, that means that the engine doesn't use the variable, and we don't need to check that the size matches what was found in the non-engine subsystems.
+                # But I think we've already checked this individually for each engine model.
                 if not all((sz_engine == 0) or (sz_engine == sz_subsys) for sz_engine, sz_subsys in zip(sz_engine_models, sz_all_engines)):
                     raise ValueError(f"size for variable {var} declared by engine models does not match that declared by non-engine subsystems and/or its multidimensional-ness")
             else:
