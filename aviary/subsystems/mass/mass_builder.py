@@ -149,7 +149,7 @@ class CoreMassBuilder(MassBuilderBase):
         if code_origin is GASP:
             # message = f'GASP-based Mass <{self.name}>'
             names = [Aircraft.Engine.NUM_ENGINES,
-                    Aircraft.Engine.Type,
+                    Aircraft.Engine.TYPE,
                     Aircraft.Engine.NUM_FUSELAGE_ENGINES,
                     Aircraft.Engine.ADDITIONAL_MASS_FRACTION]
 

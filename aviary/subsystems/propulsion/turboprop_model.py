@@ -200,22 +200,22 @@ class TurbopropModel(EngineModel):
     def get_engine_options(self, aviary_inputs=None):
         d = {}
         if self.shaft_power_model is not None:
-            d.update(self.shaft_power_model.get_engine_options())
+            d.update(self.shaft_power_model.get_engine_options(self.options))
         if self.gearbox_model is not None:
-            d.update(self.gearbox_model.get_engine_options())
+            d.update(self.gearbox_model.get_engine_options(self.options))
         if self.propeller_model is not None:
-            d.update(self.propeller_model.get_engine_options())
+            d.update(self.propeller_model.get_engine_options(self.options))
 
         return d
 
     def get_engine_inputs(self, aviary_inputs=None):
         d = {}
         if self.shaft_power_model is not None:
-            d.update(self.shaft_power_model.get_engine_inputs())
+            d.update(self.shaft_power_model.get_engine_inputs(self.options))
         if self.gearbox_model is not None:
-            d.update(self.gearbox_model.get_engine_inputs())
+            d.update(self.gearbox_model.get_engine_inputs(self.options))
         if self.propeller_model is not None:
-            d.update(self.propeller_model.get_engine_inputs())
+            d.update(self.propeller_model.get_engine_inputs(self.options))
 
         # Check if FIXED_RPM is present, and if so include that in the inputs.
         # default = (None, None)

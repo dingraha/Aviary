@@ -201,7 +201,7 @@ class PropellerBuilder(SubsystemBuilderBase):
         # default = (None, None)
         for name in names:
             # val, units = self.get_item(name, default)
-            val, units = self.get_item(name)
+            val, units = aviary_inputs.get_item(name)
             if val == None:
                 # raise ValueError(f"{message}: No value found for input {name}")
                 d[name] = {}

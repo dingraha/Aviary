@@ -247,7 +247,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
 
         aviary_options = AviaryValues()
         # aviary_options.set_val(Aircraft.Engine.NUM_ENGINES, [3, 4])
-        preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+        preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
 
         num_engine_models = len(engine_models)
         num_engines = aviary_options.get_val(Aircraft.Engine.NUM_ENGINES)
@@ -290,7 +290,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
 
         aviary_options = AviaryValues()
         aviary_options.set_val(Aircraft.Engine.NUM_ENGINES, [3, 5])
-        preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+        preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
 
         num_engine_models = len(engine_models)
         num_engines = aviary_options.get_val(Aircraft.Engine.NUM_ENGINES)
@@ -318,6 +318,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         foo_input_scalar0s_expected = np.array([0.1, 0.2, 0.3, 0.4])
         foo_input_vector0s_expected = np.random.rand(sum(2*num_engines_expected[i] for i in range(num_engine_models) if do_foos_expected[i]))
         bar_input_vector0s_expected = np.random.rand(sum(3*num_engines_expected[i] for i in range(num_engine_models)))
+        constant_fuel_consumption_expected = [2*i for i in range(num_engine_models)]
         for set_method in ("engine_model", "aero_subsys", "aviary_options"):
             engine_options = [AviaryValues() for i in range(len(num_engines_expected))]
             aero_kwargs = {}
@@ -332,6 +333,9 @@ class PreprocessPropulsionTest(unittest.TestCase):
                         sz = 2*num_engines_expected[i]
                         engine_opt.set_val(Aircraft.Engine.FOO_INPUT_VECTOR0, foo_input_vector0s_expected[idx_var:idx_var+sz], units="m")
                         idx_var += sz
+
+                    # Set engine option value that isn't actually needed by the engine model.
+                    engine_opt.set_val(Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION, constant_fuel_consumption_expected[i], units="lbm/h")
 
                 # Provide bogus values to the aero subsystem and aviary_options: they should be ignored in favor of the engine model.
                 aero_kwargs["num_engines"] = [3*ne for ne in num_engines_expected]
@@ -348,6 +352,10 @@ class PreprocessPropulsionTest(unittest.TestCase):
                 aero_kwargs["bar_input_vector0s"] = bar_input_vector0s_expected
                 # Provide bogus values in aviary_options: should be ignored in favor of the aero model.
                 aviary_options.set_val(Aircraft.Engine.BAR_INPUT_VECTOR0, bar_input_vector0s_expected + 10.0, units="m**2")
+
+                # Provide conflicting value for constant fuel consumption in `aviary_options`.
+                # Should be ignored.
+                aviary_options.set_val(Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION, [ca+3 for ca in constant_fuel_consumption_expected], units="lbm/h")
             elif set_method == "aero_subsys":
                 aero_kwargs["num_engines"] = num_engines_expected
                 aero_kwargs["do_foos"] = do_foos_expected
@@ -361,12 +369,14 @@ class PreprocessPropulsionTest(unittest.TestCase):
                 aviary_options.set_val(Aircraft.Engine.FOO_INPUT_SCALAR0, foo_input_scalar0s_expected - 30.0, units="lbf")
                 aviary_options.set_val(Aircraft.Engine.FOO_INPUT_VECTOR0, foo_input_vector0s_expected+10.0, units="m")
                 aviary_options.set_val(Aircraft.Engine.BAR_INPUT_VECTOR0, bar_input_vector0s_expected + 10.0, units="m**2")
+                aviary_options.set_val(Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION, constant_fuel_consumption_expected, units="lbm/h")
             elif set_method == "aviary_options":
                 aviary_options.set_val(Aircraft.Engine.NUM_ENGINES, num_engines_expected)
                 aviary_options.set_val(Aircraft.Engine.DO_FOO, do_foos_expected)
                 aviary_options.set_val(Aircraft.Engine.FOO_INPUT_SCALAR0, foo_input_scalar0s_expected, units="lbf")
                 aviary_options.set_val(Aircraft.Engine.FOO_INPUT_VECTOR0, foo_input_vector0s_expected, units="m")
                 aviary_options.set_val(Aircraft.Engine.BAR_INPUT_VECTOR0, bar_input_vector0s_expected, units="m**2")
+                aviary_options.set_val(Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION, constant_fuel_consumption_expected, units="lbm/h")
             else:
                 raise ValueError(f"unknown set_method = {set_method}")
 
@@ -377,7 +387,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
 
             num_engine_models = len(engine_models)
 
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
 
             self.assertEqual(len(aviary_options.get_val(Aircraft.Engine.DO_FOO)), num_engine_models)
             self.assertEqual(aviary_options.get_val(Aircraft.Engine.DO_FOO), do_foos_expected)
@@ -398,6 +408,9 @@ class PreprocessPropulsionTest(unittest.TestCase):
             sz = sum((3*num_engines_expected[i] for i in range(num_engine_models)))
             self.assertEqual(len(bar_input_vector0s), sz)
             self.assertTrue(all(bar == bar_expected for bar, bar_expected in zip(bar_input_vector0s, bar_input_vector0s_expected)))
+
+            constant_fuel_consumption = aviary_options.get_val(Aircraft.Engine.CONSTANT_FUEL_CONSUMPTION, units="lbm/h")
+            self.assertTrue(all(x == x_expected for x, x_expected in zip(constant_fuel_consumption, constant_fuel_consumption_expected)))
 
             # Should also check that the engine models themselves have the appropriate stuff.
             idx_var = 0
@@ -451,7 +464,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options = AviaryValues()
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         self.assertEqual(str(cm.exception), f"variable {var} in Model <{aero1.name}> does not have expected size {len(do_foos_expected)}")
 
@@ -480,7 +493,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options = AviaryValues()
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         subsys_names = [x.name for x in all_subsystems]
         self.assertEqual(str(cm.exception), f"non-identical values for variable {var} found in multiple subsystems: {subsys_names}")
@@ -506,7 +519,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         all_subsystems = [aero0, aero1]
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.FOO_INPUT_VECTOR0
         subsys_names = [x.name for x in all_subsystems]
         self.assertEqual(str(cm.exception), f"non-identical sizes for variable {var} found in multiple subsystems: {subsys_names}")
@@ -538,7 +551,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options.set_val(Aircraft.Engine.DO_FOO, do_foos_bogus)
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         self.assertEqual(str(cm.exception), f"incorrect number of values found for variable {var} in aviary_options: expected {num_engine_models} values (one per engine model), but found {len(do_foos_bogus)}")
 
@@ -567,7 +580,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options.set_val(Aircraft.Engine.FOO_INPUT_VECTOR0, foo_input_vector0s_bogus, units="m")
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.FOO_INPUT_VECTOR0
         sz_expected = [2*num_engines_expected[i] if do_foos_expected[i] else 0 for i in range(num_engine_models)]
         self.assertEqual(str(cm.exception), f"size {foo_input_vector0s_bogus.size} of variable {var} found in aviary_options incompatible with sizes {sz_expected} found in non-engine subsystems")
@@ -595,7 +608,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options = AviaryValues()
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         self.assertEqual(str(cm.exception), f"size declared for variable {var} by subsystem <{aero1.name}> should be a list of length {num_engine_models}, but has length {num_engine_models+1}")
 
@@ -623,7 +636,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         aviary_options = AviaryValues()
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         self.assertEqual(str(cm.exception), f"non-multidimensional variable {var} has at least one non-0 or non-1 size declared by subsystem <{aero1.name}>")
 
@@ -662,7 +675,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         all_subsystems = [aero]
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         buggy_sz = 2
         self.assertEqual(str(cm.exception), f"declared size {buggy_sz} for variable {var} in EngineModel <{engine_models[-1].name}> does not match expected size 1")
@@ -672,9 +685,9 @@ class PreprocessPropulsionTest(unittest.TestCase):
         engine_models.append(FakeEngineModel(name=f"engine{i}", options=engine_options[i], meta_data=ExtendedMetaData, buggy_do_foo_val_size=True))
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
-        self.assertEqual(str(cm.exception), f"variable {var} in EngineModel <{engine_models[-1].name}> does not have expected size 1, but has size 2")
+        self.assertEqual(str(cm.exception), f"variable {var} in <{engine_models[-1].name}> EngineModel does not have expected size 1, but has size 2")
 
         engine_options = [AviaryValues() for i in range(len(num_engines_expected))]
         do_foos_buggy = do_foos_expected[:-1]
@@ -707,7 +720,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         engine_models = [FakeEngineModel(name=f"engine{i}", options=engine_options[i], meta_data=ExtendedMetaData) for i in range(num_engine_models)]
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.DO_FOO
         self.assertEqual(str(cm.exception), f"value for variable {var} taken from aviary_options argument has too-small size")
 
@@ -737,7 +750,7 @@ class PreprocessPropulsionTest(unittest.TestCase):
         engine_models = [FakeEngineModel(name=f"engine{i}", options=engine_options[i], meta_data=ExtendedMetaData) for i in range(num_engine_models)]
 
         with self.assertRaises(ValueError) as cm:
-            preprocess_propulsion(aviary_options, all_subsystems, engine_models, ExtendedMetaData)
+            preprocess_propulsion(aviary_options, engine_models, all_subsystems, ExtendedMetaData)
         var = Aircraft.Engine.FOO_INPUT_VECTOR0
         self.assertEqual(str(cm.exception), f"value for variable {var} taken from aviary_options argument has too-small size")
 

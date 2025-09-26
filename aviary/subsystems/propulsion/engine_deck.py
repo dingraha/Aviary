@@ -1719,6 +1719,8 @@ class EngineDeck(EngineModel):
                 else:
                     d[name] = {"val": val, "units": units}
 
+        # Also check if there are any variables in `self.options` that haven't been included above.
+
         return d
 
     def get_engine_inputs(self, aviary_inputs=None):

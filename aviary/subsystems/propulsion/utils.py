@@ -167,6 +167,11 @@ def build_engine_deck(
         # check if this variable exist with useable metadata
         try:
             units = meta_data[var]['units']
+            multivalue = meta_data[var]['multivalue']
+            typeset = meta_data[var]['types']
+            if not isiterable(typeset):
+                typeset = (typeset,)
+            multidimensional = (var.startswith('aircraft:engine:') or var.startswith('aircraft:nacelle:')) and (set(typeset) & set((list, tuple, np.ndarray))) and multivalue
         except (KeyError, TypeError):
             continue
         else:
@@ -179,16 +184,42 @@ def build_engine_deck(
                 continue
             # add value from options to engine_options
             else:
-                if isiterable(aviary_val):
-                    try:
-                        aviary_val_0 = aviary_val[0]
-                    except TypeError:
-                        pass
-                    else:
-                        # if item in first index is also iterable, or if array only
-                        # contains a single value, use that
-                        if isiterable(aviary_val_0) or len(aviary_val) == 1:
+                if multidimensional:
+                    # We expect nested iterables.
+                    if isiterable(aviary_val):
+                        try:
+                            aviary_val_0 = aviary_val[0]
+                        except TypeError:
+                            # I don't think this could ever happen.
+                            # If aviary_val is an empty list, tuple, or ndarray then indexing it will through an IndexError, not a TypeError.
+                            pass
+                        if isiterable(aviary_val_0):
+                            # We have nested iterable, so take the first value.
+                            # Might not be correct, but best we can do.
                             aviary_val = aviary_val_0
+                        # else:
+                            # No nested iterable, so maybe this value is just for one engine.
+                            # So use it without change.
+                    else:
+                        # This should be iterable, so make it one.
+                        aviary_val = [aviary_val]
+                else:
+                    # We expect either a scalar value or an non-nested iterable.
+                    if isiterable(aviary_val):
+                        try:
+                            aviary_val_0 = aviary_val[0]
+                        except TypeError:
+                            # I don't think this could ever happen.
+                            # If aviary_val is an empty list, tuple, or ndarray then indexing it will through an IndexError, not a TypeError.
+                            pass
+                        else:
+                            # if item in first index is also iterable, or if array only
+                            # contains a single value, use that
+                            if isiterable(aviary_val_0):
+                                # Shouldn't have a nested iterable for this case.
+                                raise ValueError(f"nested iterable found for scalar engine variable {var}: {aviary_val}")
+                            else:
+                                aviary_val = aviary_val_0
                 # "Convert" numpy types to standard Python types. Wrap first
                 # index in numpy array before calling item() to safeguard against
                 # non-standard types, such as objects

@@ -556,7 +556,6 @@ def setup_model_options(
         return
 
     # TODO: Modify this method for multi mission/model.
-    aviary_group = prob.model
 
     # if num_engine_models > 1:
     #     if engine_models is None:
@@ -587,42 +586,16 @@ def setup_model_options(
     #         path = f'{prefix}*core_propulsion.{eng_name}*'
     #         prob.model_options[path] = opts
 
-    if engine_models is None:
-        engine_models = aviary_group.engine_builders
+    if num_engine_models > 1:
+        if engine_models is None:
+            engine_models = prob.model.engine_builders
 
-    # Get a unique list of all per-engine type options for all engine models.
-    per_engine_varnames = set(chain(*[em.get_per_engine_type_options() for em in engine_models]))
+        for engine_model in engine_models:
+            eng_name = engine_model.name
+            # Now, need to grab all the options associated with this engine model.
+            # I don't see why I can't get them from the engine models themselves, since the `preprocess_propulsion` thingy has done all that for us.
+            # Let's just do that.
+            engine_opts = extract_options(engine_model.options, engine_model.meta_data)
+            path = f'{prefix}*core_propulsion.{eng_name}*'
+            prob.model_options[path] = engine_opts
 
-    # This will be a list of options for each engine.
-    engine_opts = [{} for _ in range(num_engine_models)]
-    for key in per_engine_varnames:
-        # Get the values for the current variable.
-        vals, units = aviary_inputs.get_item(key)
-        if vals is None:
-            raise ValueError(f"no value found for variable {key}")
-
-        # Loop over each engine model
-        idx = 0
-        for (opts, engine_model) in zip(engine_opts, engine_models):
-            # Check if this variable is associated with this engine model.
-            if key in engine_model.get_per_engine_type_options():
-                # It is, so grab the next one and assign it to this engine's options.
-                try:
-                    val = vals[idx]
-                    idx += 1
-                except IndexError:
-                    raise ValueError(f"expected at least {idx+1} values for variable {key}, but have {vals}")
-                if units == 'unitless':
-                    opts[key] = val
-                else:
-                    opts[key] = (val, units)
-
-        if idx < len(vals):
-            # Warn the user if we didn't use all of vals.
-            raise UserWarning(f'extra values found for {key} = {vals} (expected {idx+1} values)')
-
-    # Push down each engine's options to the correct models.
-    for engine_model, opts in zip(engine_models, engine_opts):
-        print(f"{engine_model.name}: {opts}")
-        path = f'{prefix}*core_propulsion.{engine_model.name}*'
-        prob.model_options[path] = opts

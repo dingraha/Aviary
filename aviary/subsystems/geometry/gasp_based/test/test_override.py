@@ -25,7 +25,7 @@ class GASPOverrideTestCase(unittest.TestCase):
         engines = [build_engine_deck(aviary_inputs)]
 
         core_subsystems = get_default_premission_subsystems('GASP', engines)
-        preprocess_propulsion(aviary_inputs, engines)
+        preprocess_propulsion(aviary_inputs, engines, core_subsystems)
 
         self.aviary_inputs = aviary_inputs
 

@@ -42,11 +42,15 @@ class IdleDescentTestCase(unittest.TestCase):
         aviary_inputs.set_val(Aircraft.Wing.FUSELAGE_INTERFERENCE_FACTOR, 1.1)
 
         engines = [build_engine_deck(options=aviary_inputs)]
-        preprocess_propulsion(aviary_inputs, engines)
 
+        # default_mission_subsystems = get_default_mission_subsystems(
+        #     'GASP', [build_engine_deck(aviary_inputs)]
+        # )
         default_mission_subsystems = get_default_mission_subsystems(
-            'GASP', [build_engine_deck(aviary_inputs)]
+            'GASP', engines,
         )
+
+        preprocess_propulsion(aviary_inputs, engines, default_mission_subsystems)
 
         ode_args = dict(aviary_options=aviary_inputs, core_subsystems=default_mission_subsystems)
 

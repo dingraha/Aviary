@@ -163,7 +163,7 @@ class CoreGeometryBuilder(GeometryBuilderBase):
             names = [Aircraft.Engine.REFERENCE_DIAMETER, Aircraft.Engine.SCALE_FACTOR]
             d = {name: {} for name in names}
 
-            has_hybrid_system, _ = aviary_inputs.get_item(Aircraft.Electrical.HAS_HYBRID_SYSTEM, defaults=(False, None))
+            has_hybrid_system, _ = aviary_inputs.get_item(Aircraft.Electrical.HAS_HYBRID_SYSTEM, default=(False, None))
             if has_hybrid_system:
                 num_wing_engines = aviary_inputs.get_val(Aircraft.Engine.NUM_WING_ENGINES)
                 # num_wing_engines should be a list of length equal to the number of engine models, with each entry indicating the number of wing engines for each engine model.
